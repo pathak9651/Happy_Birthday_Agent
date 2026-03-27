@@ -15,23 +15,20 @@ const styles = [
 
 const deliveryChannels = [
   { value: "in_app", label: "In app only" },
-  { value: "email", label: "Email" }
+  { value: "email", label: "Email delivery" }
 ];
 
-const initialWishForm = {
+const initialForm = {
   name: "",
   relationship: "",
   style: "funny",
   promptType: "universal",
   interests: "",
   age: "",
-  useLiveAi: false
-};
-
-const initialScheduleForm = {
-  scheduledFor: "",
+  useLiveAi: false,
   deliveryChannel: "in_app",
-  recipientEmail: ""
+  recipientEmail: "",
+  scheduledFor: ""
 };
 
 async function readJson(response) {
@@ -44,13 +41,12 @@ async function readJson(response) {
   return data;
 }
 
-function formatScheduleTime(value) {
+function formatDateTime(value) {
   if (!value) {
     return "Not set";
   }
 
   const date = new Date(value);
-
   if (Number.isNaN(date.getTime())) {
     return value;
   }
@@ -63,22 +59,26 @@ function formatDeliveryLabel(channel) {
   return item ? item.label : channel;
 }
 
+function buildInterests(value) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export default function App() {
-  const [wishForm, setWishForm] = useState(initialWishForm);
-  const [scheduleForm, setScheduleForm] = useState(initialScheduleForm);
+  const [form, setForm] = useState(initialForm);
   const [presets, setPresets] = useState([]);
   const [history, setHistory] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [recipients, setRecipients] = useState([]);
   const [deliveryHistory, setDeliveryHistory] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [generateLoading, setGenerateLoading] = useState(false);
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [scheduleError, setScheduleError] = useState("");
-  const [scheduleSuccess, setScheduleSuccess] = useState("");
-  const [testStatus, setTestStatus] = useState("");
-  const [latestMessage, setLatestMessage] = useState(null);
+  const [formError, setFormError] = useState("");
+  const [statusText, setStatusText] = useState("");
+  const [selectedRecipientId, setSelectedRecipientId] = useState("");
 
   useEffect(() => {
     async function loadInitialData() {
@@ -105,71 +105,82 @@ export default function App() {
         setRecipients(recipientsData);
         setDeliveryHistory(deliveryHistoryData);
       } catch (requestError) {
-        setError(requestError.message);
+        setFormError(requestError.message);
       }
     }
 
     loadInitialData();
   }, []);
 
-  function updateWishField(event) {
-    const { name, value, type, checked } = event.target;
-    setWishForm((current) => ({
-      ...current,
-      [name]: type === "checkbox" ? checked : value
-    }));
-  }
-
-  function updateScheduleField(event) {
-    const { name, value } = event.target;
-    setScheduleForm((current) => ({
-      ...current,
-      [name]: value
-    }));
-  }
-
-  function buildWishPayload() {
-    return {
-      ...wishForm,
-      interests: wishForm.interests
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean)
-    };
-  }
-
-  function buildDeliveryPayload() {
-    return {
-      deliveryChannel: scheduleForm.deliveryChannel,
-      recipientEmail: scheduleForm.recipientEmail
-    };
-  }
-
-  async function refreshSidePanels() {
-    const [messagesResponse, schedulesResponse, recipientsResponse, deliveryHistoryResponse] = await Promise.all([
+  async function refreshData() {
+    const [historyResponse, schedulesResponse, recipientsResponse, deliveryHistoryResponse] = await Promise.all([
       fetch(`${apiBaseUrl}/messages`),
       fetch(`${apiBaseUrl}/schedules`),
       fetch(`${apiBaseUrl}/recipients`),
       fetch(`${apiBaseUrl}/delivery-history`)
     ]);
 
-    const [messagesData, schedulesData, recipientsData, deliveryHistoryData] = await Promise.all([
-      readJson(messagesResponse),
+    const [historyData, schedulesData, recipientsData, deliveryHistoryData] = await Promise.all([
+      readJson(historyResponse),
       readJson(schedulesResponse),
       readJson(recipientsResponse),
       readJson(deliveryHistoryResponse)
     ]);
 
-    setHistory(messagesData);
+    setHistory(historyData);
     setSchedules(schedulesData);
     setRecipients(recipientsData);
     setDeliveryHistory(deliveryHistoryData);
   }
 
-  async function handleWishSubmit(event) {
-    event.preventDefault();
-    setLoading(true);
-    setError("");
+  function updateField(event) {
+    const { name, value, type, checked } = event.target;
+    setForm((current) => ({
+      ...current,
+      [name]: type === "checkbox" ? checked : value
+    }));
+  }
+
+  function autofillRecipient(recipient) {
+    setSelectedRecipientId(recipient.id);
+    setForm((current) => ({
+      ...current,
+      name: recipient.name || "",
+      relationship: recipient.relationship || "",
+      style: recipient.favoriteStyle || current.style,
+      promptType: recipient.favoritePromptType || current.promptType,
+      interests: Array.isArray(recipient.interests) ? recipient.interests.join(", ") : current.interests,
+      age: recipient.age || "",
+      deliveryChannel: recipient.defaultDeliveryChannel || current.deliveryChannel,
+      recipientEmail: recipient.email || ""
+    }));
+    setStatusText(`Loaded ${recipient.name}'s saved profile into the form.`);
+    setFormError("");
+  }
+
+  function buildWishPayload() {
+    return {
+      name: form.name,
+      relationship: form.relationship,
+      style: form.style,
+      promptType: form.promptType,
+      interests: buildInterests(form.interests),
+      age: form.age,
+      useLiveAi: form.useLiveAi
+    };
+  }
+
+  function buildDeliveryPayload() {
+    return {
+      deliveryChannel: form.deliveryChannel,
+      recipientEmail: form.recipientEmail
+    };
+  }
+
+  async function handleGenerate() {
+    setGenerateLoading(true);
+    setFormError("");
+    setStatusText("");
 
     try {
       const response = await fetch(`${apiBaseUrl}/generate`, {
@@ -180,21 +191,20 @@ export default function App() {
         body: JSON.stringify(buildWishPayload())
       });
 
-      const data = await readJson(response);
-      setLatestMessage(data);
-      await refreshSidePanels();
+      await readJson(response);
+      setStatusText(`Generated a fresh ${form.style} message for ${form.name}.`);
+      await refreshData();
     } catch (requestError) {
-      setError(requestError.message);
+      setFormError(requestError.message);
     } finally {
-      setLoading(false);
+      setGenerateLoading(false);
     }
   }
 
   async function handleSendTestNow() {
     setTestLoading(true);
-    setScheduleError("");
-    setScheduleSuccess("");
-    setTestStatus("");
+    setFormError("");
+    setStatusText("");
 
     try {
       const response = await fetch(`${apiBaseUrl}/send-test`, {
@@ -209,26 +219,23 @@ export default function App() {
       });
 
       const data = await readJson(response);
-      setLatestMessage(data.message);
-      setTestStatus(
+      setStatusText(
         data.delivery.status === "sent"
           ? `Test sent via ${formatDeliveryLabel(data.delivery.channel)}.`
           : "Test completed with in-app storage only."
       );
-      await refreshSidePanels();
+      await refreshData();
     } catch (requestError) {
-      setScheduleError(requestError.message);
+      setFormError(requestError.message);
     } finally {
       setTestLoading(false);
     }
   }
 
-  async function handleScheduleSubmit(event) {
-    event.preventDefault();
+  async function handleSchedule() {
     setScheduleLoading(true);
-    setScheduleError("");
-    setScheduleSuccess("");
-    setTestStatus("");
+    setFormError("");
+    setStatusText("");
 
     try {
       const response = await fetch(`${apiBaseUrl}/schedules`, {
@@ -239,18 +246,21 @@ export default function App() {
         body: JSON.stringify({
           ...buildWishPayload(),
           ...buildDeliveryPayload(),
-          scheduledFor: new Date(scheduleForm.scheduledFor).toISOString()
+          scheduledFor: new Date(form.scheduledFor).toISOString()
         })
       });
 
       const data = await readJson(response);
-      setScheduleSuccess(
-        `Scheduled ${data.name}'s birthday wish for ${formatScheduleTime(data.scheduledFor)} via ${formatDeliveryLabel(data.deliveryChannel)}.`
+      setStatusText(
+        `Scheduled ${data.name}'s wish for ${formatDateTime(data.scheduledFor)} via ${formatDeliveryLabel(data.deliveryChannel)}.`
       );
-      setScheduleForm(initialScheduleForm);
-      await refreshSidePanels();
+      setForm((current) => ({
+        ...current,
+        scheduledFor: ""
+      }));
+      await refreshData();
     } catch (requestError) {
-      setScheduleError(requestError.message);
+      setFormError(requestError.message);
     } finally {
       setScheduleLoading(false);
     }
@@ -258,208 +268,218 @@ export default function App() {
 
   return (
     <div className="page-shell">
-      <section className="hero-card">
+      <section className="hero-band">
         <div className="hero-copy">
-          <p className="eyebrow">AI Birthday Studio</p>
-          <h1>Build birthday wishes that sound like they came from a real person.</h1>
-          <p className="hero-text">
-            Generate funny roasts, emotional notes, Bollywood drama, rap verses, and
-            voice-ready scripts from one dashboard.
+          <p className="eyebrow">Birthday Wishing Agent</p>
+          <h1>Your agent is welcoming you and sending wishes to everyone.</h1>
+          <p className="hero-text hero-subtext">
+            Your birthday workflow now lives in one place: profile details, prompt tuning,
+            delivery choice, instant testing, and future scheduling.
           </p>
         </div>
-        <div className="hero-note">
-          <span>Current stack</span>
-          <strong>React + Express</strong>
-          <span>Ready for Gemini, MongoDB, Email, and voice APIs</span>
+        <div className="hero-stats">
+          <article>
+            <span>Recipients</span>
+            <strong>{recipients.length}</strong>
+          </article>
+          <article>
+            <span>Scheduled</span>
+            <strong>{schedules.length}</strong>
+          </article>
+          <article>
+            <span>Deliveries</span>
+            <strong>{deliveryHistory.length}</strong>
+          </article>
         </div>
       </section>
 
-      <main className="content-grid">
-        <section className="panel">
-          <div className="panel-heading">
-            <h2>Create a wish</h2>
-            <p>Use your upgraded prompts as structured inputs instead of one-off text.</p>
+      <main className="dashboard-grid">
+        <section className="composer-panel wide-panel">
+          <div className="composer-topline">
+            <div>
+              <p className="eyebrow">Unified Studio</p>
+              <h2>Compose Once</h2>
+            </div>
+            <div className="mode-chip">
+              <span>{form.useLiveAi ? "Gemini Live" : "Local Template"}</span>
+            </div>
           </div>
 
-          <form className="form-grid" onSubmit={handleWishSubmit}>
-            <label>
-              Name
-              <input name="name" value={wishForm.name} onChange={updateWishField} placeholder="Rahul" />
-            </label>
-
-            <label>
-              Relationship
-              <input
-                name="relationship"
-                value={wishForm.relationship}
-                onChange={updateWishField}
-                placeholder="best friend"
-              />
-            </label>
-
-            <label>
-              Style
-              <select name="style" value={wishForm.style} onChange={updateWishField}>
-                {styles.map((style) => (
-                  <option key={style.value} value={style.value}>
-                    {style.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              Prompt preset
-              <select name="promptType" value={wishForm.promptType} onChange={updateWishField}>
-                {presets.map((preset) => (
-                  <option key={preset.id} value={preset.id}>
-                    {preset.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              Interests
-              <input
-                name="interests"
-                value={wishForm.interests}
-                onChange={updateWishField}
-                placeholder="cricket, memes, bikes"
-              />
-            </label>
-
-            <label>
-              Age
-              <input name="age" value={wishForm.age} onChange={updateWishField} placeholder="25" />
-            </label>
-
-            <label className="checkbox-row">
-              <input
-                name="useLiveAi"
-                type="checkbox"
-                checked={wishForm.useLiveAi}
-                onChange={updateWishField}
-              />
-              Use Gemini live generation
-            </label>
-
-            <button type="submit" disabled={loading}>
-              {loading ? "Generating..." : "Generate birthday message"}
-            </button>
-          </form>
-
-          {error ? <p className="error-text">{error}</p> : null}
-        </section>
-
-        <section className="panel preview-panel">
-          <div className="panel-heading">
-            <h2>Latest output</h2>
-            <p>Preview the generated message, prompt, and provider source.</p>
-          </div>
-
-          {latestMessage ? (
-            <div className="message-card">
-              <span className="message-badge">{latestMessage.provider}</span>
-              <p className="message-body">{latestMessage.message}</p>
-              <div className="prompt-box">
-                <strong>Prompt preview</strong>
-                <p>{latestMessage.prompt}</p>
+          <div className="command-form">
+            <div className="form-section">
+              <div className="section-heading">
+                <h3>Recipient</h3>
+                <p>Everything about the person lives here.</p>
+              </div>
+              <div className="field-grid two-col">
+                <label>
+                  Name
+                  <input name="name" value={form.name} onChange={updateField} placeholder="Rahul" />
+                </label>
+                <label>
+                  Relationship
+                  <input
+                    name="relationship"
+                    value={form.relationship}
+                    onChange={updateField}
+                    placeholder="best friend"
+                  />
+                </label>
+                <label>
+                  Age
+                  <input name="age" value={form.age} onChange={updateField} placeholder="25" />
+                </label>
+                <label>
+                  Interests
+                  <input
+                    name="interests"
+                    value={form.interests}
+                    onChange={updateField}
+                    placeholder="cricket, memes, bikes"
+                  />
+                </label>
               </div>
             </div>
-          ) : (
-            <div className="empty-state">
-              Fill the form and generate your first personalized birthday message.
-            </div>
-          )}
-        </section>
 
-        <section className="panel schedule-panel">
-          <div className="panel-heading">
-            <h2>Schedule a wish</h2>
-            <p>Reuse the current recipient details, choose in-app or email delivery, and let the backend send it automatically.</p>
-          </div>
-
-          <form className="form-grid" onSubmit={handleScheduleSubmit}>
-            <label>
-              Scheduled time
-              <input
-                type="datetime-local"
-                name="scheduledFor"
-                value={scheduleForm.scheduledFor}
-                onChange={updateScheduleField}
-              />
-            </label>
-
-            <label>
-              Delivery channel
-              <select
-                name="deliveryChannel"
-                value={scheduleForm.deliveryChannel}
-                onChange={updateScheduleField}
-              >
-                {deliveryChannels.map((channel) => (
-                  <option key={channel.value} value={channel.value}>
-                    {channel.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {scheduleForm.deliveryChannel === "email" ? (
-              <label>
-                Recipient email
+            <div className="form-section">
+              <div className="section-heading">
+                <h3>Message Engine</h3>
+                <p>Shape tone, preset, and generation mode.</p>
+              </div>
+              <div className="field-grid two-col">
+                <label>
+                  Style
+                  <select name="style" value={form.style} onChange={updateField}>
+                    {styles.map((style) => (
+                      <option key={style.value} value={style.value}>
+                        {style.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Prompt preset
+                  <select name="promptType" value={form.promptType} onChange={updateField}>
+                    {presets.map((preset) => (
+                      <option key={preset.id} value={preset.id}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <label className="toggle-row">
                 <input
-                  name="recipientEmail"
-                  value={scheduleForm.recipientEmail}
-                  onChange={updateScheduleField}
-                  placeholder="friend@example.com"
+                  name="useLiveAi"
+                  type="checkbox"
+                  checked={form.useLiveAi}
+                  onChange={updateField}
                 />
+                <span>Use Gemini live generation for richer output</span>
               </label>
-            ) : null}
-
-            <div className="action-row">
-              <button type="submit" disabled={scheduleLoading}>
-                {scheduleLoading ? "Scheduling..." : "Save scheduled wish"}
-              </button>
-              <button
-                type="button"
-                className="secondary-button"
-                disabled={testLoading}
-                onClick={handleSendTestNow}
-              >
-                {testLoading ? "Sending test..." : "Send test now"}
-              </button>
             </div>
-          </form>
 
-          {scheduleSuccess ? <p className="success-text">{scheduleSuccess}</p> : null}
-          {testStatus ? <p className="success-text">{testStatus}</p> : null}
-          {scheduleError ? <p className="error-text">{scheduleError}</p> : null}
-        </section>
+            <div className="form-section accent-section">
+              <div className="section-heading">
+                <h3>Delivery and Schedule</h3>
+                <p>Use the same form to test now or schedule for later.</p>
+              </div>
+              <div className="field-grid three-col">
+                <label>
+                  Delivery channel
+                  <select name="deliveryChannel" value={form.deliveryChannel} onChange={updateField}>
+                    {deliveryChannels.map((channel) => (
+                      <option key={channel.value} value={channel.value}>
+                        {channel.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Scheduled time
+                  <input
+                    type="datetime-local"
+                    name="scheduledFor"
+                    value={form.scheduledFor}
+                    onChange={updateField}
+                  />
+                </label>
+                <label>
+                  Recipient email
+                  <input
+                    name="recipientEmail"
+                    value={form.recipientEmail}
+                    onChange={updateField}
+                    placeholder={form.deliveryChannel === "email" ? "friend@example.com" : "Optional unless using email"}
+                    disabled={form.deliveryChannel !== "email"}
+                  />
+                </label>
+              </div>
+            </div>
 
-        <section className="panel history-panel">
-          <div className="panel-heading">
-            <h2>Saved recipients</h2>
-            <p>Your recipient profiles now remember preferences and recent activity.</p>
+            <div className="composer-footer">
+              <div className="assistant-note">
+                <strong>Workflow</strong>
+                <span>Generate now, test delivery instantly, or save a scheduled job with the same input.</span>
+              </div>
+              <div className="action-bar">
+                <button type="button" disabled={generateLoading} onClick={handleGenerate}>
+                  {generateLoading ? "Generating..." : "Generate Now"}
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={testLoading}
+                  onClick={handleSendTestNow}
+                >
+                  {testLoading ? "Sending..." : "Send Test"}
+                </button>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  disabled={scheduleLoading}
+                  onClick={handleSchedule}
+                >
+                  {scheduleLoading ? "Scheduling..." : "Schedule Wish"}
+                </button>
+              </div>
+            </div>
           </div>
 
-          <div className="history-list">
+          {statusText ? <p className="success-text inline-feedback">{statusText}</p> : null}
+          {formError ? <p className="error-text inline-feedback">{formError}</p> : null}
+        </section>
+
+        <section className="panel wide-panel">
+          <div className="panel-header">
+            <div>
+              <p className="eyebrow">Profiles</p>
+              <h2>Saved Recipients</h2>
+            </div>
+            <p className="panel-hint">Tap any card to autofill the form above.</p>
+          </div>
+          <div className="card-grid three-up">
             {recipients.length ? (
               recipients.map((item) => (
-                <article key={item.id} className="history-item">
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`info-card recipient-card selectable-card ${selectedRecipientId === item.id ? "selected-card" : ""}`}
+                  onClick={() => autofillRecipient(item)}
+                >
                   <div className="history-topline">
                     <strong>{item.name}</strong>
                     <span>{item.relationship}</span>
                   </div>
-                  <p>
-                    Favorite style: {item.favoriteStyle} · Delivery: {formatDeliveryLabel(item.defaultDeliveryChannel)}
+                  <p>{item.email ? item.email : "No email saved yet"}</p>
+                  <div className="mini-meta">
+                    <span>{item.favoriteStyle}</span>
+                    <span>{formatDeliveryLabel(item.defaultDeliveryChannel)}</span>
+                  </div>
+                  <p className="muted-line">
+                    {item.lastDeliveryAt ? `Last delivery ${formatDateTime(item.lastDeliveryAt)}` : "No deliveries yet"}
                   </p>
-                  <p>
-                    {item.email ? `Email: ${item.email}` : "No default email saved"}
-                    {item.lastDeliveryAt ? ` · Last delivery: ${formatScheduleTime(item.lastDeliveryAt)}` : ""}
-                  </p>
-                </article>
+                </button>
               ))
             ) : (
               <div className="empty-state">No recipient profiles yet.</div>
@@ -467,21 +487,84 @@ export default function App() {
           </div>
         </section>
 
-        <section className="panel history-panel">
-          <div className="panel-heading">
-            <h2>Recent wishes</h2>
-            <p>Saved messages so you can compare tone and keep the output fresh.</p>
+        <section className="panel wide-panel">
+          <div className="panel-header">
+            <div>
+              <p className="eyebrow">Scheduler</p>
+              <h2>Scheduled Wishes</h2>
+            </div>
           </div>
+          <div className="card-grid two-up">
+            {schedules.length ? (
+              schedules.map((item) => (
+                <article key={item.id} className="info-card schedule-card">
+                  <div className="history-topline">
+                    <strong>{item.name}</strong>
+                    <span>{formatDateTime(item.scheduledFor)}</span>
+                  </div>
+                  <p>{item.style} · {item.relationship} · {item.useLiveAi ? "Gemini" : "Local"}</p>
+                  <p>
+                    {formatDeliveryLabel(item.deliveryChannel)}
+                    {item.recipientEmail ? ` · ${item.recipientEmail}` : ""}
+                  </p>
+                  <div className="schedule-meta-row">
+                    <span className={`status-pill status-${item.status}`}>{item.status}</span>
+                    <span className={`status-pill delivery-${item.deliveryStatus}`}>{item.deliveryStatus}</span>
+                  </div>
+                  {item.lastError ? <p className="muted-line">{item.lastError}</p> : null}
+                </article>
+              ))
+            ) : (
+              <div className="empty-state">No scheduled wishes yet.</div>
+            )}
+          </div>
+        </section>
 
+        <section className="panel wide-panel">
+          <div className="panel-header">
+            <div>
+              <p className="eyebrow">Delivery Log</p>
+              <h2>Delivery History</h2>
+            </div>
+          </div>
+          <div className="card-grid two-up">
+            {deliveryHistory.length ? (
+              deliveryHistory.map((item) => (
+                <article key={item.id} className="info-card delivery-card">
+                  <div className="history-topline">
+                    <strong>{item.recipientName}</strong>
+                    <span>{formatDateTime(item.createdAt)}</span>
+                  </div>
+                  <p>
+                    {formatDeliveryLabel(item.deliveryChannel)} · {item.provider || "in_app"}
+                    {item.destination ? ` · ${item.destination}` : ""}
+                  </p>
+                  <div className="schedule-meta-row">
+                    <span className={`status-pill delivery-${item.status}`}>{item.status}</span>
+                  </div>
+                  {item.errorMessage ? <p className="muted-line">{item.errorMessage}</p> : null}
+                </article>
+              ))
+            ) : (
+              <div className="empty-state">No delivery history yet.</div>
+            )}
+          </div>
+        </section>
+
+        <section className="panel wide-panel">
+          <div className="panel-header">
+            <div>
+              <p className="eyebrow">Output Archive</p>
+              <h2>Recent Wishes</h2>
+            </div>
+          </div>
           <div className="history-list">
             {history.length ? (
               history.map((item) => (
                 <article key={item.id} className="history-item">
                   <div className="history-topline">
                     <strong>{item.name}</strong>
-                    <span>
-                      {item.style} · {item.relationship}
-                    </span>
+                    <span>{item.style} · {item.relationship}</span>
                   </div>
                   <p>{item.message}</p>
                 </article>
@@ -491,71 +574,9 @@ export default function App() {
             )}
           </div>
         </section>
-
-        <section className="panel history-panel">
-          <div className="panel-heading">
-            <h2>Scheduled wishes</h2>
-            <p>Track pending, processed, and failed jobs from the same dashboard.</p>
-          </div>
-
-          <div className="history-list">
-            {schedules.length ? (
-              schedules.map((item) => (
-                <article key={item.id} className="history-item schedule-item">
-                  <div className="history-topline">
-                    <strong>{item.name}</strong>
-                    <span>{formatScheduleTime(item.scheduledFor)}</span>
-                  </div>
-                  <p>
-                    {item.style} · {item.relationship} · {item.useLiveAi ? "Gemini" : "Local"}
-                  </p>
-                  <p>
-                    Delivery: {formatDeliveryLabel(item.deliveryChannel)}
-                    {item.recipientEmail ? ` · ${item.recipientEmail}` : ""}
-                  </p>
-                  <div className="schedule-meta-row">
-                    <span className={`status-pill status-${item.status}`}>{item.status}</span>
-                    <span className={`status-pill delivery-${item.deliveryStatus}`}>{item.deliveryStatus}</span>
-                    {item.lastError ? <span className="schedule-error-note">{item.lastError}</span> : null}
-                  </div>
-                </article>
-              ))
-            ) : (
-              <div className="empty-state">No scheduled wishes yet.</div>
-            )}
-          </div>
-        </section>
-
-        <section className="panel history-panel">
-          <div className="panel-heading">
-            <h2>Delivery history</h2>
-            <p>Every test send and scheduled delivery is logged here.</p>
-          </div>
-
-          <div className="history-list">
-            {deliveryHistory.length ? (
-              deliveryHistory.map((item) => (
-                <article key={item.id} className="history-item">
-                  <div className="history-topline">
-                    <strong>{item.recipientName}</strong>
-                    <span>{formatScheduleTime(item.createdAt)}</span>
-                  </div>
-                  <p>
-                    {formatDeliveryLabel(item.deliveryChannel)} · {item.provider || "in_app"}
-                    {item.destination ? ` · ${item.destination}` : ""}
-                  </p>
-                  <div className="schedule-meta-row">
-                    <span className={`status-pill delivery-${item.status}`}>{item.status}</span>
-                    {item.errorMessage ? <span className="schedule-error-note">{item.errorMessage}</span> : null}
-                  </div>
-                </article>
-              ))
-            ) : (
-              <div className="empty-state">No delivery history yet.</div>
-            )}
-          </div>
-        </section>
       </main>
     </div>
   );
 }
+
+
