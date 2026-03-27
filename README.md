@@ -6,7 +6,7 @@ An MVP birthday-message generator built from your product idea:
 - Express API for generating and storing wishes
 - Prompt presets inspired by your "master prompts"
 - MongoDB-backed persistence for generated wishes
-- Real OpenAI integration when `useLiveAi` is enabled
+- Real Gemini integration when `useLiveAi` is enabled
 - Local template engine fallback when live AI is disabled
 
 ## What is included
@@ -18,7 +18,7 @@ An MVP birthday-message generator built from your product idea:
 - Prompt preset selector
 - Generated message preview
 - Recent wish history
-- `Use live AI mode` toggle for real model output
+- `Use Gemini live generation` toggle for real model output
 
 ### Backend
 
@@ -26,7 +26,7 @@ An MVP birthday-message generator built from your product idea:
 - `GET /api/messages` to fetch recent messages
 - `GET /api/presets` to load prompt modes for the UI
 - MongoDB persistence with Mongoose
-- OpenAI Responses API integration through the official SDK
+- Gemini API integration through the official Google GenAI SDK
 
 ## Project structure
 
@@ -45,11 +45,11 @@ npm install
 
 2. Start MongoDB locally.
 
-3. Set your OpenAI key in [backend/.env](/d:/Happy_Birthday_Agent/backend/.env):
+3. Set your Gemini key in [backend/.env](/d:/Happy_Birthday_Agent/backend/.env):
 
 ```env
-OPENAI_API_KEY=your_key_here
-OPENAI_MODEL=gpt-4.1-mini
+GEMINI_API_KEY=your_key_here
+GEMINI_MODEL=gemini-2.5-flash
 ```
 
 4. Start the backend:
@@ -73,8 +73,8 @@ Copy [backend/.env.example](/d:/Happy_Birthday_Agent/backend/.env.example) to `.
 Required variables:
 
 - `MONGODB_URI=mongodb://127.0.0.1:27017/happy-birthday-agent`
-- `OPENAI_API_KEY=your_key_here`
-- `OPENAI_MODEL=gpt-4.1-mini`
+- `GEMINI_API_KEY=your_key_here`
+- `GEMINI_MODEL=gemini-2.5-flash`
 
 ## Database setup
 
@@ -86,15 +86,15 @@ The backend expects MongoDB before it starts.
 2. Start MongoDB locally.
 3. Make sure `MONGODB_URI` points to your running instance.
 
-## OpenAI setup
+## Gemini setup
 
-The app now uses the official OpenAI Node SDK in [`backend/src/services/messageGenerator.js`](/d:/Happy_Birthday_Agent/backend/src/services/messageGenerator.js).
+The app now uses the official Google GenAI SDK in [`backend/src/services/messageGenerator.js`](/d:/Happy_Birthday_Agent/backend/src/services/messageGenerator.js).
 
 Behavior:
 
 - If `useLiveAi` is off, the app uses the local template engine.
-- If `useLiveAi` is on, the app sends the built prompt to OpenAI using the Responses API.
-- If `OPENAI_API_KEY` is missing, the API returns a clear error instead of silently failing.
+- If `useLiveAi` is on, the app sends the built prompt to Gemini.
+- If `GEMINI_API_KEY` is missing, the API returns a clear error instead of silently failing.
 
 ## Next upgrades
 

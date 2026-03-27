@@ -116,7 +116,7 @@ export default function App() {
         <div className="hero-note">
           <span>Current stack</span>
           <strong>React + Express</strong>
-          <span>Ready for OpenAI, MongoDB, Cron, Twilio, and voice APIs</span>
+          <span>Ready for Gemini, MongoDB, Cron, Twilio, and voice APIs</span>
         </div>
       </section>
 
@@ -187,7 +187,7 @@ export default function App() {
                 checked={form.useLiveAi}
                 onChange={updateField}
               />
-              Use live AI mode placeholder
+              Use Gemini live generation
             </label>
 
             <button type="submit" disabled={loading}>
@@ -248,3 +248,4 @@ export default function App() {
     </div>
   );
 }
+

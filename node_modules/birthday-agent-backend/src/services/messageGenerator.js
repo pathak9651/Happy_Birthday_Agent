@@ -1,6 +1,6 @@
+import { GoogleGenAI } from "@google/genai";
 import { config } from "../config.js";
 import { buildPrompt } from "./promptBuilder.js";
-import OpenAI from "openai";
 
 const starters = {
   funny: [
@@ -37,20 +37,18 @@ const starters = {
   ]
 };
 
-let openAiClient;
+let geminiClient;
 
-function getOpenAiClient() {
-  if (!config.openAiApiKey) {
+function getGeminiClient() {
+  if (!config.geminiApiKey) {
     return null;
   }
 
-  if (!openAiClient) {
-    openAiClient = new OpenAI({
-      apiKey: config.openAiApiKey
-    });
+  if (!geminiClient) {
+    geminiClient = new GoogleGenAI({ apiKey: config.geminiApiKey });
   }
 
-  return openAiClient;
+  return geminiClient;
 }
 
 function pick(list, seedText) {
@@ -90,60 +88,54 @@ function createFallbackMessage(input) {
   return `${opener}. ${interests} ${middleByStyle[input.style] || middleByStyle.funny} ${endingByStyle[input.style] || endingByStyle.funny}`;
 }
 
-async function generateWithOpenAi(prompt) {
-  const client = getOpenAiClient();
+async function generateWithGemini(prompt) {
+  const client = getGeminiClient();
 
   if (!client) {
-    const error = new Error("OPENAI_API_KEY is missing in backend/.env");
+    const error = new Error("GEMINI_API_KEY is missing in backend/.env");
     error.statusCode = 400;
     throw error;
   }
 
-  const response = await client.responses.create({
-    model: config.openAiModel,
-    input: [
-      {
-        role: "developer",
-        content: [
-          {
-            type: "input_text",
-            text: "You write original birthday messages that feel natural, specific, and memorable. Avoid generic filler and do not mention being an AI."
-          }
-        ]
-      },
-      {
-        role: "user",
-        content: [
-          {
-            type: "input_text",
-            text: prompt
-          }
-        ]
+  try {
+    const response = await client.models.generateContent({
+      model: config.geminiModel,
+      contents: prompt,
+      config: {
+        systemInstruction:
+          "You write original birthday messages that feel natural, specific, and memorable. Avoid generic filler and do not mention being an AI.",
+        temperature: 0.9
       }
-    ]
-  });
+    });
 
-  const message = response.output_text?.trim();
+    const message = response.text?.trim();
 
-  if (!message) {
-    const error = new Error("OpenAI returned an empty message");
-    error.statusCode = 502;
-    throw error;
+    if (!message) {
+      const error = new Error("Gemini returned an empty message");
+      error.statusCode = 502;
+      throw error;
+    }
+
+    return {
+      prompt,
+      provider: "Gemini",
+      modelUsed: config.geminiModel,
+      message
+    };
+  } catch (error) {
+    const statusCode = error?.status || error?.statusCode || 502;
+    const message = error?.message || "Gemini request failed";
+    const wrappedError = new Error(message);
+    wrappedError.statusCode = statusCode;
+    throw wrappedError;
   }
-
-  return {
-    prompt,
-    provider: "OpenAI",
-    modelUsed: config.openAiModel,
-    message
-  };
 }
 
 export async function generateMessage(input) {
   const prompt = buildPrompt(input);
 
   if (input.useLiveAi) {
-    return generateWithOpenAi(prompt);
+    return generateWithGemini(prompt);
   }
 
   return {
