@@ -77,24 +77,21 @@ export default function App() {
   useEffect(() => {
     async function loadInitialData() {
       try {
-        const [presetResponse, historyResponse, schedulesResponse, recipientsResponse, deliveryHistoryResponse] = await Promise.all([
+        const [presetResponse, schedulesResponse, recipientsResponse, deliveryHistoryResponse] = await Promise.all([
           fetch(`${apiBaseUrl}/presets`),
-          fetch(`${apiBaseUrl}/messages`),
           fetch(`${apiBaseUrl}/schedules`),
           fetch(`${apiBaseUrl}/recipients`),
           fetch(`${apiBaseUrl}/delivery-history`)
         ]);
 
-        const [presetData, historyData, schedulesData, recipientsData, deliveryHistoryData] = await Promise.all([
+        const [presetData, schedulesData, recipientsData, deliveryHistoryData] = await Promise.all([
           readJson(presetResponse),
-          readJson(historyResponse),
           readJson(schedulesResponse),
           readJson(recipientsResponse),
           readJson(deliveryHistoryResponse)
         ]);
 
         setPresets(presetData);
-        setHistory(historyData);
         setSchedules(schedulesData);
         setRecipients(recipientsData);
         setDeliveryHistory(deliveryHistoryData);
@@ -107,24 +104,25 @@ export default function App() {
   }, []);
 
   async function refreshData() {
-    const [historyResponse, schedulesResponse, recipientsResponse, deliveryHistoryResponse] = await Promise.all([
-      fetch(`${apiBaseUrl}/messages`),
+    const [schedulesResponse, recipientsResponse, deliveryHistoryResponse] = await Promise.all([
       fetch(`${apiBaseUrl}/schedules`),
       fetch(`${apiBaseUrl}/recipients`),
       fetch(`${apiBaseUrl}/delivery-history`)
     ]);
 
-    const [historyData, schedulesData, recipientsData, deliveryHistoryData] = await Promise.all([
-      readJson(historyResponse),
+    const [schedulesData, recipientsData, deliveryHistoryData] = await Promise.all([
       readJson(schedulesResponse),
       readJson(recipientsResponse),
       readJson(deliveryHistoryResponse)
     ]);
 
-    setHistory(historyData);
     setSchedules(schedulesData);
     setRecipients(recipientsData);
     setDeliveryHistory(deliveryHistoryData);
+  }
+
+  function pushRecentWish(message) {
+    setHistory((current) => [message, ...current].slice(0, 10));
   }
 
   function updateField(event) {
@@ -179,7 +177,8 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(buildWishPayload())
       });
-      await readJson(response);
+      const data = await readJson(response);
+      pushRecentWish(data);
       setStatusText(`Generated a fresh ${form.style} message for ${form.name}.`);
       await refreshData();
     } catch (requestError) {
@@ -200,7 +199,8 @@ export default function App() {
         body: JSON.stringify({ ...buildWishPayload(), ...buildDeliveryPayload() })
       });
       const data = await readJson(response);
-      setStatusText(data.delivery.status === "sent" ? `Test sent via ${formatDeliveryLabel(data.delivery.channel)}.` : "Test completed with in-app storage only.");
+      pushRecentWish(data.message);
+      setStatusText(data.delivery.status === "sent" ? `Test sent via ${formatDeliveryLabel(data.delivery.channel)}.` : "Test completed with in-app delivery only.");
       await refreshData();
     } catch (requestError) {
       setFormError(requestError.message);
@@ -344,14 +344,14 @@ export default function App() {
         </section>
 
         <section className="panel wide-panel">
-          <div className="panel-header"><div><p className="eyebrow">Output Archive</p><h2>Recent Wishes</h2></div></div>
+          <div className="panel-header"><div><p className="eyebrow">Output Feed</p><h2>Recent Wishes</h2></div><p className="panel-hint">Visible on this dashboard only for the current session.</p></div>
           <div className="history-list">
             {history.length ? history.map((item) => (
               <article key={item.id} className="history-item">
                 <div className="history-topline"><strong>{item.name}</strong><span>{item.style} · {item.relationship}</span></div>
                 <p>{item.message}</p>
               </article>
-            )) : <div className="empty-state">No saved wishes yet.</div>}
+            )) : <div className="empty-state">No recent wishes in this session yet.</div>}
           </div>
         </section>
       </main>

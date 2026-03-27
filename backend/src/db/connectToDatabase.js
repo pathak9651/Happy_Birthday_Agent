@@ -8,6 +8,12 @@ export async function connectToDatabase() {
     return mongoose.connection;
   }
 
+  if (!config.mongoUri) {
+    const error = new Error("MONGODB_URI is required. Use your MongoDB Atlas connection string in backend/.env or deployment env vars.");
+    error.statusCode = 500;
+    throw error;
+  }
+
   await mongoose.connect(config.mongoUri);
   hasConnected = true;
 

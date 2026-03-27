@@ -5,45 +5,40 @@ An MVP birthday-message generator built from your product idea:
 - React dashboard for prompt-driven message creation
 - Express API for generating and storing wishes
 - Prompt presets inspired by your "master prompts"
-- MongoDB-backed persistence for generated wishes
+- MongoDB Atlas-ready persistence with Mongoose
 - Real Gemini integration when `useLiveAi` is enabled
 - Local template engine fallback when live AI is disabled
 - Automatic schedule processing with `node-cron`
 - Delivery through in-app storage or email
 - Saved recipient profiles and delivery history
 
-## What is included
+## Atlas setup
 
-### Frontend
+This project is now configured for MongoDB Atlas style deployment instead of assuming a local MongoDB instance.
 
-- Person details form
-- Style selector: funny, emotional, romantic, savage, formal, Bollywood, rap, voice
-- Prompt preset selector
-- Generated message preview
-- Recent wish history
-- `Use Gemini live generation` toggle for real model output
-- Schedule form with in-app and email delivery options
-- `Send test now` button for immediate email verification
-- Saved recipient profiles panel
-- Delivery history panel
+Use an Atlas SRV connection string in [backend/.env](/d:/Happy_Birthday_Agent/backend/.env):
 
-### Backend
+```env
+MONGODB_URI=mongodb+srv://<db_user>:<db_password>@<cluster>.mongodb.net/happy-birthday-agent?retryWrites=true&w=majority&appName=Cluster0
+```
 
-- `POST /api/generate` to generate and save a birthday message
-- `POST /api/send-test` to generate and send a test delivery immediately
-- `GET /api/messages` to fetch recent messages
-- `POST /api/schedules` to create a scheduled birthday job
-- `GET /api/schedules` to fetch scheduled birthday jobs
-- `GET /api/recipients` to fetch saved recipient profiles
-- `GET /api/delivery-history` to fetch delivery activity
-- MongoDB persistence with Mongoose
-- Gemini API integration through the official Google GenAI SDK
-- Cron-based schedule processing every minute
-- Email delivery with Nodemailer
+## Atlas checklist
+
+1. Create a MongoDB Atlas cluster.
+2. Create a database user with read/write access.
+3. Add your app IP to the Atlas IP access list.
+4. Copy the Atlas SRV connection string.
+5. Replace `<db_user>`, `<db_password>`, and `<cluster>` in [backend/.env](/d:/Happy_Birthday_Agent/backend/.env).
+6. If your password contains special characters, URL-encode it in the connection string.
+
+## Deployment note
+
+The backend no longer silently falls back to `mongodb://127.0.0.1:27017/...`.
+If `MONGODB_URI` is missing, startup now fails clearly so deployment config mistakes are easier to catch.
 
 ## Product memory
 
-The app now remembers recipients and delivery activity:
+The app remembers recipients and delivery activity:
 
 - recipients are upserted by name + relationship
 - favorite style and prompt type are saved automatically
