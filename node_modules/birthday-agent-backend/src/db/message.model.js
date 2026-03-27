@@ -40,6 +40,10 @@ const messageSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    modelUsed: {
+      type: String,
+      default: ""
+    },
     prompt: {
       type: String,
       required: true

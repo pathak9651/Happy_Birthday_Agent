@@ -74,8 +74,8 @@ export function createApp() {
 
   app.use((error, _req, res, _next) => {
     console.error(error);
-    res.status(500).json({
-      error: "Internal server error"
+    res.status(error.statusCode || 500).json({
+      error: error.message || "Internal server error"
     });
   });
 

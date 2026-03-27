@@ -6,7 +6,8 @@ An MVP birthday-message generator built from your product idea:
 - Express API for generating and storing wishes
 - Prompt presets inspired by your "master prompts"
 - MongoDB-backed persistence for generated wishes
-- Local template engine now, with clean hooks for OpenAI later
+- Real OpenAI integration when `useLiveAi` is enabled
+- Local template engine fallback when live AI is disabled
 
 ## What is included
 
@@ -17,6 +18,7 @@ An MVP birthday-message generator built from your product idea:
 - Prompt preset selector
 - Generated message preview
 - Recent wish history
+- `Use live AI mode` toggle for real model output
 
 ### Backend
 
@@ -24,13 +26,13 @@ An MVP birthday-message generator built from your product idea:
 - `GET /api/messages` to fetch recent messages
 - `GET /api/presets` to load prompt modes for the UI
 - MongoDB persistence with Mongoose
+- OpenAI Responses API integration through the official SDK
 
 ## Project structure
 
 ```text
 backend/   Express API
 frontend/  React + Vite dashboard
-docker-compose.yml  Local MongoDB service
 ```
 
 ## Run locally
@@ -41,79 +43,62 @@ docker-compose.yml  Local MongoDB service
 npm install
 ```
 
-2. Start MongoDB:
+2. Start MongoDB locally.
 
-```bash
-docker compose up -d
+3. Set your OpenAI key in [backend/.env](/d:/Happy_Birthday_Agent/backend/.env):
+
+```env
+OPENAI_API_KEY=your_key_here
+OPENAI_MODEL=gpt-4.1-mini
 ```
 
-3. Start the backend:
+4. Start the backend:
 
 ```bash
 npm run dev:backend
 ```
 
-4. In a second terminal, start the frontend:
+5. In a second terminal, start the frontend:
 
 ```bash
 npm run dev:frontend
 ```
 
-5. Open `http://localhost:5173`
+6. Open `http://localhost:5173`
 
 ## Environment
 
 Copy [backend/.env.example](/d:/Happy_Birthday_Agent/backend/.env.example) to `.env` inside [`backend`](/d:/Happy_Birthday_Agent/backend) and fill values as needed.
 
-Required database variable:
+Required variables:
 
 - `MONGODB_URI=mongodb://127.0.0.1:27017/happy-birthday-agent`
+- `OPENAI_API_KEY=your_key_here`
+- `OPENAI_MODEL=gpt-4.1-mini`
 
 ## Database setup
 
-The backend now expects MongoDB before it starts.
-
-### Docker Compose
-
-Use the included [docker-compose.yml](/d:/Happy_Birthday_Agent/docker-compose.yml):
-
-```bash
-docker compose up -d
-```
-
-To stop it:
-
-```bash
-docker compose down
-```
-
-To stop it and remove the MongoDB volume:
-
-```bash
-docker compose down -v
-```
+The backend expects MongoDB before it starts.
 
 ### Local MongoDB
-
-If you prefer a local installation instead of Docker:
 
 1. Install MongoDB Community Server if it is not already installed.
 2. Start MongoDB locally.
 3. Make sure `MONGODB_URI` points to your running instance.
 
+## OpenAI setup
+
+The app now uses the official OpenAI Node SDK in [`backend/src/services/messageGenerator.js`](/d:/Happy_Birthday_Agent/backend/src/services/messageGenerator.js).
+
+Behavior:
+
+- If `useLiveAi` is off, the app uses the local template engine.
+- If `useLiveAi` is on, the app sends the built prompt to OpenAI using the Responses API.
+- If `OPENAI_API_KEY` is missing, the API returns a clear error instead of silently failing.
+
 ## Next upgrades
 
-### OpenAI integration
-
-Replace the placeholder `useLiveAi` path in [`backend/src/services/messageGenerator.js`](/d:/Happy_Birthday_Agent/backend/src/services/messageGenerator.js) with a real OpenAI API call.
-
-Suggested flow:
-
-- Send the structured prompt from `buildPrompt`
-- Save the model name and token usage with each generated message
-- Add prompt versioning so you can improve outputs without breaking old history
-
-### Database
+### Smarter persistence
 
 The app already uses MongoDB through [`backend/src/db/message.model.js`](/d:/Happy_Birthday_Agent/backend/src/db/message.model.js) and [`backend/src/data/messageRepository.js`](/d:/Happy_Birthday_Agent/backend/src/data/messageRepository.js). You can extend it next with recipient profiles, schedules, and delivery logs.
 
@@ -134,12 +119,3 @@ To avoid repetitive wishes later, store:
 - past generated messages
 - favorite tone and prompt mode
 - delivery channel
-
-## Build strategy
-
-This repo intentionally starts with the first practical slice:
-
-1. Generate message
-2. Show in UI
-3. Save recent output
-4. Expand to live AI, persistence, scheduler, and delivery

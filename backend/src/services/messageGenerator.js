@@ -1,4 +1,6 @@
+import { config } from "../config.js";
 import { buildPrompt } from "./promptBuilder.js";
+import OpenAI from "openai";
 
 const starters = {
   funny: [
@@ -34,6 +36,22 @@ const starters = {
     "Pause for a second... because someone special deserves a proper celebration"
   ]
 };
+
+let openAiClient;
+
+function getOpenAiClient() {
+  if (!config.openAiApiKey) {
+    return null;
+  }
+
+  if (!openAiClient) {
+    openAiClient = new OpenAI({
+      apiKey: config.openAiApiKey
+    });
+  }
+
+  return openAiClient;
+}
 
 function pick(list, seedText) {
   const source = list?.length ? list : starters.funny;
@@ -72,20 +90,66 @@ function createFallbackMessage(input) {
   return `${opener}. ${interests} ${middleByStyle[input.style] || middleByStyle.funny} ${endingByStyle[input.style] || endingByStyle.funny}`;
 }
 
+async function generateWithOpenAi(prompt) {
+  const client = getOpenAiClient();
+
+  if (!client) {
+    const error = new Error("OPENAI_API_KEY is missing in backend/.env");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const response = await client.responses.create({
+    model: config.openAiModel,
+    input: [
+      {
+        role: "developer",
+        content: [
+          {
+            type: "input_text",
+            text: "You write original birthday messages that feel natural, specific, and memorable. Avoid generic filler and do not mention being an AI."
+          }
+        ]
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: prompt
+          }
+        ]
+      }
+    ]
+  });
+
+  const message = response.output_text?.trim();
+
+  if (!message) {
+    const error = new Error("OpenAI returned an empty message");
+    error.statusCode = 502;
+    throw error;
+  }
+
+  return {
+    prompt,
+    provider: "OpenAI",
+    modelUsed: config.openAiModel,
+    message
+  };
+}
+
 export async function generateMessage(input) {
   const prompt = buildPrompt(input);
 
   if (input.useLiveAi) {
-    return {
-      prompt,
-      provider: "OpenAI",
-      message: `Live AI mode is ready for your API integration. Prompt preview: ${prompt}`
-    };
+    return generateWithOpenAi(prompt);
   }
 
   return {
     prompt,
     provider: "Local template engine",
+    modelUsed: "local-template-engine",
     message: createFallbackMessage(input)
   };
 }
