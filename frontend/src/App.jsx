@@ -15,9 +15,7 @@ const styles = [
 
 const deliveryChannels = [
   { value: "in_app", label: "In app only" },
-  { value: "email", label: "Email" },
-  { value: "sms", label: "SMS" },
-  { value: "whatsapp", label: "WhatsApp" }
+  { value: "email", label: "Email" }
 ];
 
 const initialWishForm = {
@@ -33,8 +31,7 @@ const initialWishForm = {
 const initialScheduleForm = {
   scheduledFor: "",
   deliveryChannel: "in_app",
-  recipientEmail: "",
-  recipientPhone: ""
+  recipientEmail: ""
 };
 
 async function readJson(response) {
@@ -74,9 +71,11 @@ export default function App() {
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(false);
   const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [testLoading, setTestLoading] = useState(false);
   const [error, setError] = useState("");
   const [scheduleError, setScheduleError] = useState("");
   const [scheduleSuccess, setScheduleSuccess] = useState("");
+  const [testStatus, setTestStatus] = useState("");
   const [latestMessage, setLatestMessage] = useState(null);
 
   useEffect(() => {
@@ -131,6 +130,13 @@ export default function App() {
     };
   }
 
+  function buildDeliveryPayload() {
+    return {
+      deliveryChannel: scheduleForm.deliveryChannel,
+      recipientEmail: scheduleForm.recipientEmail
+    };
+  }
+
   async function handleWishSubmit(event) {
     event.preventDefault();
     setLoading(true);
@@ -155,11 +161,45 @@ export default function App() {
     }
   }
 
+  async function handleSendTestNow() {
+    setTestLoading(true);
+    setScheduleError("");
+    setScheduleSuccess("");
+    setTestStatus("");
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/send-test`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ...buildWishPayload(),
+          ...buildDeliveryPayload()
+        })
+      });
+
+      const data = await readJson(response);
+      setLatestMessage(data.message);
+      setHistory((current) => [data.message, ...current].slice(0, 5));
+      setTestStatus(
+        data.delivery.status === "sent"
+          ? `Test sent via ${formatDeliveryLabel(data.delivery.channel)}.`
+          : "Test completed with in-app storage only."
+      );
+    } catch (requestError) {
+      setScheduleError(requestError.message);
+    } finally {
+      setTestLoading(false);
+    }
+  }
+
   async function handleScheduleSubmit(event) {
     event.preventDefault();
     setScheduleLoading(true);
     setScheduleError("");
     setScheduleSuccess("");
+    setTestStatus("");
 
     try {
       const response = await fetch(`${apiBaseUrl}/schedules`, {
@@ -169,7 +209,7 @@ export default function App() {
         },
         body: JSON.stringify({
           ...buildWishPayload(),
-          ...scheduleForm,
+          ...buildDeliveryPayload(),
           scheduledFor: new Date(scheduleForm.scheduledFor).toISOString()
         })
       });
@@ -201,7 +241,7 @@ export default function App() {
         <div className="hero-note">
           <span>Current stack</span>
           <strong>React + Express</strong>
-          <span>Ready for Gemini, MongoDB, Email, Twilio, and voice APIs</span>
+          <span>Ready for Gemini, MongoDB, Email, and voice APIs</span>
         </div>
       </section>
 
@@ -313,7 +353,7 @@ export default function App() {
         <section className="panel schedule-panel">
           <div className="panel-heading">
             <h2>Schedule a wish</h2>
-            <p>Reuse the current recipient details, choose a channel, and let the backend send it automatically.</p>
+            <p>Reuse the current recipient details, choose in-app or email delivery, and let the backend send it automatically.</p>
           </div>
 
           <form className="form-grid" onSubmit={handleScheduleSubmit}>
@@ -354,24 +394,23 @@ export default function App() {
               </label>
             ) : null}
 
-            {scheduleForm.deliveryChannel === "sms" || scheduleForm.deliveryChannel === "whatsapp" ? (
-              <label>
-                Recipient phone
-                <input
-                  name="recipientPhone"
-                  value={scheduleForm.recipientPhone}
-                  onChange={updateScheduleField}
-                  placeholder="+919876543210"
-                />
-              </label>
-            ) : null}
-
-            <button type="submit" disabled={scheduleLoading}>
-              {scheduleLoading ? "Scheduling..." : "Save scheduled wish"}
-            </button>
+            <div className="action-row">
+              <button type="submit" disabled={scheduleLoading}>
+                {scheduleLoading ? "Scheduling..." : "Save scheduled wish"}
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={testLoading}
+                onClick={handleSendTestNow}
+              >
+                {testLoading ? "Sending test..." : "Send test now"}
+              </button>
+            </div>
           </form>
 
           {scheduleSuccess ? <p className="success-text">{scheduleSuccess}</p> : null}
+          {testStatus ? <p className="success-text">{testStatus}</p> : null}
           {scheduleError ? <p className="error-text">{scheduleError}</p> : null}
         </section>
 
@@ -420,7 +459,6 @@ export default function App() {
                   <p>
                     Delivery: {formatDeliveryLabel(item.deliveryChannel)}
                     {item.recipientEmail ? ` · ${item.recipientEmail}` : ""}
-                    {item.recipientPhone ? ` · ${item.recipientPhone}` : ""}
                   </p>
                   <div className="schedule-meta-row">
                     <span className={`status-pill status-${item.status}`}>{item.status}</span>

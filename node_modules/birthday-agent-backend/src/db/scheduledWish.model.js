@@ -39,7 +39,7 @@ const scheduledWishSchema = new mongoose.Schema(
     },
     deliveryChannel: {
       type: String,
-      enum: ["in_app", "email", "sms", "whatsapp"],
+      enum: ["in_app", "email"],
       default: "in_app",
       required: true
     },

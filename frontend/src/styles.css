@@ -195,6 +195,22 @@ button:disabled {
   opacity: 0.75;
 }
 
+.secondary-button {
+  color: var(--primary-dark);
+  background: rgba(219, 91, 49, 0.12);
+  box-shadow: none;
+}
+
+.secondary-button:hover {
+  box-shadow: none;
+}
+
+.action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
 .message-card,
 .empty-state {
   border-radius: 24px;
@@ -318,7 +334,8 @@ button:disabled {
 
 @media (max-width: 900px) {
   .hero-card,
-  .content-grid {
+  .content-grid,
+  .action-row {
     grid-template-columns: 1fr;
   }
 

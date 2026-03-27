@@ -3,6 +3,7 @@ import express from "express";
 import { config } from "./config.js";
 import { listMessages, saveMessage } from "./data/messageRepository.js";
 import { createSchedule, listSchedules } from "./data/scheduleRepository.js";
+import { deliverScheduledWish } from "./delivery/deliverScheduledWish.js";
 import { getDatabaseStatus } from "./db/connectToDatabase.js";
 import { promptPresets } from "./services/promptBuilder.js";
 import { generateMessage } from "./services/messageGenerator.js";
@@ -25,22 +26,32 @@ function normalizeScheduleDelivery(body) {
   return {
     deliveryChannel: String(body.deliveryChannel || "in_app").trim().toLowerCase(),
     recipientEmail: body.recipientEmail ? String(body.recipientEmail).trim() : "",
-    recipientPhone: body.recipientPhone ? String(body.recipientPhone).trim() : ""
+    recipientPhone: ""
   };
 }
 
 function validateScheduleDelivery(delivery) {
+  if (delivery.deliveryChannel !== "in_app" && delivery.deliveryChannel !== "email") {
+    const error = new Error("Only in_app and email delivery are supported");
+    error.statusCode = 400;
+    throw error;
+  }
+
   if (delivery.deliveryChannel === "email" && !delivery.recipientEmail) {
     const error = new Error("recipientEmail is required for email delivery");
     error.statusCode = 400;
     throw error;
   }
+}
 
-  if ((delivery.deliveryChannel === "sms" || delivery.deliveryChannel === "whatsapp") && !delivery.recipientPhone) {
-    const error = new Error("recipientPhone is required for SMS or WhatsApp delivery");
-    error.statusCode = 400;
-    throw error;
-  }
+async function generateAndStoreMessage(input) {
+  const generated = await generateMessage(input);
+  const saved = await saveMessage({
+    ...input,
+    ...generated
+  });
+
+  return saved;
 }
 
 export function createApp() {
@@ -95,13 +106,46 @@ export function createApp() {
       }
 
       const normalizedInput = normalizeWishInput(body);
-      const generated = await generateMessage(normalizedInput);
-      const saved = await saveMessage({
-        ...normalizedInput,
-        ...generated
-      });
+      const saved = await generateAndStoreMessage(normalizedInput);
 
       res.status(201).json(saved);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/send-test", async (req, res, next) => {
+    try {
+      const body = req.body || {};
+
+      if (!body.name || !body.relationship || !body.style) {
+        res.status(400).json({
+          error: "name, relationship, and style are required"
+        });
+        return;
+      }
+
+      const normalizedInput = normalizeWishInput(body);
+      const delivery = normalizeScheduleDelivery(body);
+      validateScheduleDelivery(delivery);
+
+      const saved = await generateAndStoreMessage(normalizedInput);
+      const deliveryResult = await deliverScheduledWish({
+        schedule: {
+          ...normalizedInput,
+          ...delivery
+        },
+        message: saved.message
+      });
+
+      res.status(201).json({
+        message: saved,
+        delivery: {
+          channel: deliveryResult.channel,
+          externalId: deliveryResult.externalId || "",
+          status: delivery.deliveryChannel === "in_app" ? "skipped" : "sent"
+        }
+      });
     } catch (error) {
       next(error);
     }

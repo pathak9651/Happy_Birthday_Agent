@@ -13,9 +13,5 @@ export const config = {
   smtpSecure: String(process.env.SMTP_SECURE || "false").toLowerCase() === "true",
   smtpUser: process.env.SMTP_USER || "",
   smtpPass: process.env.SMTP_PASS || "",
-  smtpFrom: process.env.SMTP_FROM || "",
-  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID || "",
-  twilioAuthToken: process.env.TWILIO_AUTH_TOKEN || "",
-  twilioPhoneNumber: process.env.TWILIO_PHONE_NUMBER || "",
-  twilioWhatsappNumber: process.env.TWILIO_WHATSAPP_NUMBER || ""
+  smtpFrom: process.env.SMTP_FROM || ""
 };
