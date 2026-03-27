@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
-const apiBaseUrl = "http://localhost:4000/api";
+const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api").replace(/\/$/, "");
+const apiBaseUrl = configuredApiBaseUrl;
 
 const styles = [
   { value: "funny", label: "Funny" },
