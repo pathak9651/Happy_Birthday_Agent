@@ -9,6 +9,7 @@ An MVP birthday-message generator built from your product idea:
 - Real Gemini integration when `useLiveAi` is enabled
 - Local template engine fallback when live AI is disabled
 - Automatic schedule processing with `node-cron`
+- Delivery through Email and Twilio channels
 
 ## What is included
 
@@ -20,6 +21,7 @@ An MVP birthday-message generator built from your product idea:
 - Generated message preview
 - Recent wish history
 - `Use Gemini live generation` toggle for real model output
+- Schedule form with in-app, email, SMS, and WhatsApp delivery options
 
 ### Backend
 
@@ -30,11 +32,13 @@ An MVP birthday-message generator built from your product idea:
 - MongoDB persistence with Mongoose
 - Gemini API integration through the official Google GenAI SDK
 - Cron-based schedule processing every minute
+- Email delivery with Nodemailer
+- SMS and WhatsApp delivery with Twilio
 
 ## Project structure
 
 ```text
-backend/   Express API + MongoDB + scheduler
+backend/   Express API + MongoDB + scheduler + delivery
 frontend/  React + Vite dashboard
 ```
 
@@ -48,12 +52,7 @@ npm install
 
 2. Start MongoDB locally.
 
-3. Set your Gemini key in [backend/.env](/d:/Happy_Birthday_Agent/backend/.env):
-
-```env
-GEMINI_API_KEY=your_key_here
-GEMINI_MODEL=gemini-2.5-flash
-```
+3. Fill [backend/.env](/d:/Happy_Birthday_Agent/backend/.env) with your Gemini key and any delivery credentials you want to use.
 
 4. Start the backend:
 
@@ -73,68 +72,37 @@ npm run dev:frontend
 
 Copy [backend/.env.example](/d:/Happy_Birthday_Agent/backend/.env.example) to `.env` inside [`backend`](/d:/Happy_Birthday_Agent/backend) and fill values as needed.
 
-Required variables:
+Core variables:
 
 - `MONGODB_URI=mongodb://127.0.0.1:27017/happy-birthday-agent`
 - `GEMINI_API_KEY=your_key_here`
 - `GEMINI_MODEL=gemini-2.5-flash`
 
-## Database setup
+Email variables:
 
-The backend expects MongoDB before it starts.
+- `SMTP_HOST=`
+- `SMTP_PORT=587`
+- `SMTP_SECURE=false`
+- `SMTP_USER=`
+- `SMTP_PASS=`
+- `SMTP_FROM=`
 
-### Local MongoDB
+Twilio variables:
 
-1. Install MongoDB Community Server if it is not already installed.
-2. Start MongoDB locally.
-3. Make sure `MONGODB_URI` points to your running instance.
+- `TWILIO_ACCOUNT_SID=`
+- `TWILIO_AUTH_TOKEN=`
+- `TWILIO_PHONE_NUMBER=`
+- `TWILIO_WHATSAPP_NUMBER=`
 
-## Gemini setup
-
-The app uses the official Google GenAI SDK in [`backend/src/services/messageGenerator.js`](/d:/Happy_Birthday_Agent/backend/src/services/messageGenerator.js).
-
-Behavior:
-
-- If `useLiveAi` is off, the app uses the local template engine.
-- If `useLiveAi` is on, the app sends the built prompt to Gemini.
-- If `GEMINI_API_KEY` is missing, the API returns a clear error instead of silently failing.
-
-## Scheduling setup
+## Scheduling and delivery
 
 The scheduler starts automatically with the backend and checks for due jobs every minute.
 
-Schedule payload example:
+Delivery channels:
 
-```json
-{
-  "name": "Rahul",
-  "relationship": "best friend",
-  "style": "funny",
-  "promptType": "universal",
-  "interests": ["cricket", "memes"],
-  "age": "25",
-  "useLiveAi": true,
-  "scheduledFor": "2026-03-28T00:00:00.000Z"
-}
-```
+- `in_app` keeps the message stored only in MongoDB
+- `email` sends via Nodemailer
+- `sms` sends through Twilio SMS
+- `whatsapp` sends through Twilio WhatsApp
 
-When a schedule is due, the backend generates the message and stores it in the messages collection, then marks the schedule as `processed`. Failed runs are marked as `failed` with the error saved.
-
-## Next upgrades
-
-### Delivery
-
-Add:
-
-- Twilio for SMS or WhatsApp delivery
-- NodeMailer for email sending
-- ElevenLabs for voice narration
-
-### Memory system
-
-To avoid repetitive wishes later, store:
-
-- recipient profile
-- past generated messages
-- favorite tone and prompt mode
-- delivery channel
+If the selected delivery channel is missing required credentials or destination info, the scheduled job is marked as `failed` and the error is saved on the schedule.

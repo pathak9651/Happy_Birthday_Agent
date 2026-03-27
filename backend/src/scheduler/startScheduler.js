@@ -5,6 +5,7 @@ import {
   markScheduleFailed,
   markScheduleProcessed
 } from "../data/scheduleRepository.js";
+import { deliverScheduledWish } from "../delivery/deliverScheduledWish.js";
 import { generateMessage } from "../services/messageGenerator.js";
 
 let isProcessing = false;
@@ -37,7 +38,26 @@ async function processDueSchedules() {
           ...generated
         });
 
-        await markScheduleProcessed(schedule._id, savedMessage.id);
+        let deliveryResult = {
+          deliveryStatus: "skipped",
+          externalId: "",
+          deliveredAt: null
+        };
+
+        if (schedule.deliveryChannel && schedule.deliveryChannel !== "in_app") {
+          const sent = await deliverScheduledWish({
+            schedule,
+            message: generated.message
+          });
+
+          deliveryResult = {
+            deliveryStatus: "sent",
+            externalId: sent.externalId || "",
+            deliveredAt: new Date()
+          };
+        }
+
+        await markScheduleProcessed(schedule._id, savedMessage.id, deliveryResult);
         console.log(`Processed scheduled wish for ${schedule.name}`);
       } catch (error) {
         await markScheduleFailed(schedule._id, error.message || "Schedule processing failed");

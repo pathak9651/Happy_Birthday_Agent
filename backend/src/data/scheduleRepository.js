@@ -21,14 +21,17 @@ export async function listDueSchedules(now = new Date()) {
   }).sort({ scheduledFor: 1 });
 }
 
-export async function markScheduleProcessed(scheduleId, generatedMessageId) {
+export async function markScheduleProcessed(scheduleId, generatedMessageId, deliveryResult = {}) {
   const updated = await ScheduledWish.findByIdAndUpdate(
     scheduleId,
     {
       status: "processed",
       processedAt: new Date(),
       lastError: "",
-      generatedMessageId
+      generatedMessageId,
+      deliveryStatus: deliveryResult.deliveryStatus || "skipped",
+      deliveryExternalId: deliveryResult.externalId || "",
+      deliveredAt: deliveryResult.deliveredAt || null
     },
     { new: true }
   );
@@ -42,7 +45,8 @@ export async function markScheduleFailed(scheduleId, errorMessage) {
     {
       status: "failed",
       processedAt: new Date(),
-      lastError: errorMessage
+      lastError: errorMessage,
+      deliveryStatus: "failed"
     },
     { new: true }
   );

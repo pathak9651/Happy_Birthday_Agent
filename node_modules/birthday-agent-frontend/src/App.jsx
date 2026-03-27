@@ -13,6 +13,13 @@ const styles = [
   { value: "voice", label: "Voice Script" }
 ];
 
+const deliveryChannels = [
+  { value: "in_app", label: "In app only" },
+  { value: "email", label: "Email" },
+  { value: "sms", label: "SMS" },
+  { value: "whatsapp", label: "WhatsApp" }
+];
+
 const initialWishForm = {
   name: "",
   relationship: "",
@@ -24,7 +31,10 @@ const initialWishForm = {
 };
 
 const initialScheduleForm = {
-  scheduledFor: ""
+  scheduledFor: "",
+  deliveryChannel: "in_app",
+  recipientEmail: "",
+  recipientPhone: ""
 };
 
 async function readJson(response) {
@@ -49,6 +59,11 @@ function formatScheduleTime(value) {
   }
 
   return date.toLocaleString();
+}
+
+function formatDeliveryLabel(channel) {
+  const item = deliveryChannels.find((entry) => entry.value === channel);
+  return item ? item.label : channel;
 }
 
 export default function App() {
@@ -154,13 +169,16 @@ export default function App() {
         },
         body: JSON.stringify({
           ...buildWishPayload(),
+          ...scheduleForm,
           scheduledFor: new Date(scheduleForm.scheduledFor).toISOString()
         })
       });
 
       const data = await readJson(response);
       setSchedules((current) => [...current, data].sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor)));
-      setScheduleSuccess(`Scheduled ${data.name}'s birthday wish for ${formatScheduleTime(data.scheduledFor)}.`);
+      setScheduleSuccess(
+        `Scheduled ${data.name}'s birthday wish for ${formatScheduleTime(data.scheduledFor)} via ${formatDeliveryLabel(data.deliveryChannel)}.`
+      );
       setScheduleForm(initialScheduleForm);
     } catch (requestError) {
       setScheduleError(requestError.message);
@@ -183,7 +201,7 @@ export default function App() {
         <div className="hero-note">
           <span>Current stack</span>
           <strong>React + Express</strong>
-          <span>Ready for Gemini, MongoDB, Cron, Twilio, and voice APIs</span>
+          <span>Ready for Gemini, MongoDB, Email, Twilio, and voice APIs</span>
         </div>
       </section>
 
@@ -295,7 +313,7 @@ export default function App() {
         <section className="panel schedule-panel">
           <div className="panel-heading">
             <h2>Schedule a wish</h2>
-            <p>Reuse the current recipient details and set when the backend should generate it.</p>
+            <p>Reuse the current recipient details, choose a channel, and let the backend send it automatically.</p>
           </div>
 
           <form className="form-grid" onSubmit={handleScheduleSubmit}>
@@ -308,6 +326,45 @@ export default function App() {
                 onChange={updateScheduleField}
               />
             </label>
+
+            <label>
+              Delivery channel
+              <select
+                name="deliveryChannel"
+                value={scheduleForm.deliveryChannel}
+                onChange={updateScheduleField}
+              >
+                {deliveryChannels.map((channel) => (
+                  <option key={channel.value} value={channel.value}>
+                    {channel.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {scheduleForm.deliveryChannel === "email" ? (
+              <label>
+                Recipient email
+                <input
+                  name="recipientEmail"
+                  value={scheduleForm.recipientEmail}
+                  onChange={updateScheduleField}
+                  placeholder="friend@example.com"
+                />
+              </label>
+            ) : null}
+
+            {scheduleForm.deliveryChannel === "sms" || scheduleForm.deliveryChannel === "whatsapp" ? (
+              <label>
+                Recipient phone
+                <input
+                  name="recipientPhone"
+                  value={scheduleForm.recipientPhone}
+                  onChange={updateScheduleField}
+                  placeholder="+919876543210"
+                />
+              </label>
+            ) : null}
 
             <button type="submit" disabled={scheduleLoading}>
               {scheduleLoading ? "Scheduling..." : "Save scheduled wish"}
@@ -360,8 +417,14 @@ export default function App() {
                   <p>
                     {item.style} · {item.relationship} · {item.useLiveAi ? "Gemini" : "Local"}
                   </p>
+                  <p>
+                    Delivery: {formatDeliveryLabel(item.deliveryChannel)}
+                    {item.recipientEmail ? ` · ${item.recipientEmail}` : ""}
+                    {item.recipientPhone ? ` · ${item.recipientPhone}` : ""}
+                  </p>
                   <div className="schedule-meta-row">
                     <span className={`status-pill status-${item.status}`}>{item.status}</span>
+                    <span className={`status-pill delivery-${item.deliveryStatus}`}>{item.deliveryStatus}</span>
                     {item.lastError ? <span className="schedule-error-note">{item.lastError}</span> : null}
                   </div>
                 </article>

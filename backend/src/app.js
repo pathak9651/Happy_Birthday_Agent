@@ -21,6 +21,28 @@ function normalizeWishInput(body) {
   };
 }
 
+function normalizeScheduleDelivery(body) {
+  return {
+    deliveryChannel: String(body.deliveryChannel || "in_app").trim().toLowerCase(),
+    recipientEmail: body.recipientEmail ? String(body.recipientEmail).trim() : "",
+    recipientPhone: body.recipientPhone ? String(body.recipientPhone).trim() : ""
+  };
+}
+
+function validateScheduleDelivery(delivery) {
+  if (delivery.deliveryChannel === "email" && !delivery.recipientEmail) {
+    const error = new Error("recipientEmail is required for email delivery");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if ((delivery.deliveryChannel === "sms" || delivery.deliveryChannel === "whatsapp") && !delivery.recipientPhone) {
+    const error = new Error("recipientPhone is required for SMS or WhatsApp delivery");
+    error.statusCode = 400;
+    throw error;
+  }
+}
+
 export function createApp() {
   const app = express();
 
@@ -106,8 +128,12 @@ export function createApp() {
       }
 
       const normalizedInput = normalizeWishInput(body);
+      const delivery = normalizeScheduleDelivery(body);
+      validateScheduleDelivery(delivery);
+
       const savedSchedule = await createSchedule({
         ...normalizedInput,
+        ...delivery,
         scheduledFor: scheduledDate
       });
 

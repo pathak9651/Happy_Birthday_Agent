@@ -37,6 +37,30 @@ const scheduledWishSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    deliveryChannel: {
+      type: String,
+      enum: ["in_app", "email", "sms", "whatsapp"],
+      default: "in_app",
+      required: true
+    },
+    recipientEmail: {
+      type: String,
+      default: ""
+    },
+    recipientPhone: {
+      type: String,
+      default: ""
+    },
+    deliveryStatus: {
+      type: String,
+      enum: ["pending", "sent", "failed", "skipped"],
+      default: "pending"
+    },
+    deliveryExternalId: {
+      type: String,
+      default: ""
+    },
+    deliveredAt: Date,
     scheduledFor: {
       type: Date,
       required: true,
@@ -69,6 +93,7 @@ const scheduledWishSchema = new mongoose.Schema(
         ret.updatedAt = ret.updatedAt.toISOString();
         ret.scheduledFor = ret.scheduledFor.toISOString();
         ret.processedAt = ret.processedAt ? ret.processedAt.toISOString() : null;
+        ret.deliveredAt = ret.deliveredAt ? ret.deliveredAt.toISOString() : null;
         ret.generatedMessageId = ret.generatedMessageId ? ret.generatedMessageId.toString() : null;
         delete ret._id;
         return ret;
