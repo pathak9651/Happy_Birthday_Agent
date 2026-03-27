@@ -87,7 +87,8 @@ select {
 .history-topline span,
 .history-item p,
 .empty-state,
-label {
+label,
+.schedule-error-note {
   color: var(--muted);
 }
 
@@ -200,12 +201,16 @@ button:disabled {
   padding: 20px;
 }
 
-.message-badge {
+.message-badge,
+.status-pill {
   display: inline-flex;
   padding: 8px 12px;
   border-radius: 999px;
   font-size: 0.78rem;
   font-weight: 700;
+}
+
+.message-badge {
   color: var(--primary-dark);
   background: rgba(219, 91, 49, 0.11);
 }
@@ -250,8 +255,32 @@ button:disabled {
   margin-bottom: 8px;
 }
 
+.schedule-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+  align-items: center;
+}
+
+.status-pending {
+  color: #7a4b00;
+  background: rgba(234, 179, 8, 0.18);
+}
+
+.status-processed {
+  color: #166534;
+  background: rgba(34, 197, 94, 0.16);
+}
+
+.status-failed {
+  color: #991b1b;
+  background: rgba(239, 68, 68, 0.15);
+}
+
 .history-item p,
 .error-text,
+.success-text,
 .empty-state {
   margin: 0;
   line-height: 1.65;
@@ -259,6 +288,11 @@ button:disabled {
 
 .error-text {
   color: #b42318;
+  margin-top: 12px;
+}
+
+.success-text {
+  color: #166534;
   margin-top: 12px;
 }
 
@@ -275,5 +309,9 @@ button:disabled {
   .history-topline {
     flex-direction: column;
     gap: 4px;
+  }
+
+  .schedule-meta-row {
+    align-items: flex-start;
   }
 }

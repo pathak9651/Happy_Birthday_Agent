@@ -13,7 +13,7 @@ const styles = [
   { value: "voice", label: "Voice Script" }
 ];
 
-const initialForm = {
+const initialWishForm = {
   name: "",
   relationship: "",
   style: "funny",
@@ -21,6 +21,10 @@ const initialForm = {
   interests: "",
   age: "",
   useLiveAi: false
+};
+
+const initialScheduleForm = {
+  scheduledFor: ""
 };
 
 async function readJson(response) {
@@ -33,29 +37,51 @@ async function readJson(response) {
   return data;
 }
 
+function formatScheduleTime(value) {
+  if (!value) {
+    return "Not set";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString();
+}
+
 export default function App() {
-  const [form, setForm] = useState(initialForm);
+  const [wishForm, setWishForm] = useState(initialWishForm);
+  const [scheduleForm, setScheduleForm] = useState(initialScheduleForm);
   const [presets, setPresets] = useState([]);
   const [history, setHistory] = useState([]);
+  const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
   const [error, setError] = useState("");
+  const [scheduleError, setScheduleError] = useState("");
+  const [scheduleSuccess, setScheduleSuccess] = useState("");
   const [latestMessage, setLatestMessage] = useState(null);
 
   useEffect(() => {
     async function loadInitialData() {
       try {
-        const [presetResponse, historyResponse] = await Promise.all([
+        const [presetResponse, historyResponse, schedulesResponse] = await Promise.all([
           fetch(`${apiBaseUrl}/presets`),
-          fetch(`${apiBaseUrl}/messages`)
+          fetch(`${apiBaseUrl}/messages`),
+          fetch(`${apiBaseUrl}/schedules`)
         ]);
 
-        const [presetData, historyData] = await Promise.all([
+        const [presetData, historyData, schedulesData] = await Promise.all([
           readJson(presetResponse),
-          readJson(historyResponse)
+          readJson(historyResponse),
+          readJson(schedulesResponse)
         ]);
 
         setPresets(presetData);
         setHistory(historyData);
+        setSchedules(schedulesData);
       } catch (requestError) {
         setError(requestError.message);
       }
@@ -64,15 +90,33 @@ export default function App() {
     loadInitialData();
   }, []);
 
-  function updateField(event) {
+  function updateWishField(event) {
     const { name, value, type, checked } = event.target;
-    setForm((current) => ({
+    setWishForm((current) => ({
       ...current,
       [name]: type === "checkbox" ? checked : value
     }));
   }
 
-  async function handleSubmit(event) {
+  function updateScheduleField(event) {
+    const { name, value } = event.target;
+    setScheduleForm((current) => ({
+      ...current,
+      [name]: value
+    }));
+  }
+
+  function buildWishPayload() {
+    return {
+      ...wishForm,
+      interests: wishForm.interests
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    };
+  }
+
+  async function handleWishSubmit(event) {
     event.preventDefault();
     setLoading(true);
     setError("");
@@ -83,13 +127,7 @@ export default function App() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          ...form,
-          interests: form.interests
-            .split(",")
-            .map((item) => item.trim())
-            .filter(Boolean)
-        })
+        body: JSON.stringify(buildWishPayload())
       });
 
       const data = await readJson(response);
@@ -99,6 +137,35 @@ export default function App() {
       setError(requestError.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleScheduleSubmit(event) {
+    event.preventDefault();
+    setScheduleLoading(true);
+    setScheduleError("");
+    setScheduleSuccess("");
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/schedules`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ...buildWishPayload(),
+          scheduledFor: new Date(scheduleForm.scheduledFor).toISOString()
+        })
+      });
+
+      const data = await readJson(response);
+      setSchedules((current) => [...current, data].sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor)));
+      setScheduleSuccess(`Scheduled ${data.name}'s birthday wish for ${formatScheduleTime(data.scheduledFor)}.`);
+      setScheduleForm(initialScheduleForm);
+    } catch (requestError) {
+      setScheduleError(requestError.message);
+    } finally {
+      setScheduleLoading(false);
     }
   }
 
@@ -127,25 +194,30 @@ export default function App() {
             <p>Use your upgraded prompts as structured inputs instead of one-off text.</p>
           </div>
 
-          <form className="form-grid" onSubmit={handleSubmit}>
+          <form className="form-grid" onSubmit={handleWishSubmit}>
             <label>
               Name
-              <input name="name" value={form.name} onChange={updateField} placeholder="Rahul" />
+              <input
+                name="name"
+                value={wishForm.name}
+                onChange={updateWishField}
+                placeholder="Rahul"
+              />
             </label>
 
             <label>
               Relationship
               <input
                 name="relationship"
-                value={form.relationship}
-                onChange={updateField}
+                value={wishForm.relationship}
+                onChange={updateWishField}
                 placeholder="best friend"
               />
             </label>
 
             <label>
               Style
-              <select name="style" value={form.style} onChange={updateField}>
+              <select name="style" value={wishForm.style} onChange={updateWishField}>
                 {styles.map((style) => (
                   <option key={style.value} value={style.value}>
                     {style.label}
@@ -156,7 +228,7 @@ export default function App() {
 
             <label>
               Prompt preset
-              <select name="promptType" value={form.promptType} onChange={updateField}>
+              <select name="promptType" value={wishForm.promptType} onChange={updateWishField}>
                 {presets.map((preset) => (
                   <option key={preset.id} value={preset.id}>
                     {preset.label}
@@ -169,23 +241,23 @@ export default function App() {
               Interests
               <input
                 name="interests"
-                value={form.interests}
-                onChange={updateField}
+                value={wishForm.interests}
+                onChange={updateWishField}
                 placeholder="cricket, memes, bikes"
               />
             </label>
 
             <label>
               Age
-              <input name="age" value={form.age} onChange={updateField} placeholder="25" />
+              <input name="age" value={wishForm.age} onChange={updateWishField} placeholder="25" />
             </label>
 
             <label className="checkbox-row">
               <input
                 name="useLiveAi"
                 type="checkbox"
-                checked={form.useLiveAi}
-                onChange={updateField}
+                checked={wishForm.useLiveAi}
+                onChange={updateWishField}
               />
               Use Gemini live generation
             </label>
@@ -220,10 +292,36 @@ export default function App() {
           )}
         </section>
 
+        <section className="panel schedule-panel">
+          <div className="panel-heading">
+            <h2>Schedule a wish</h2>
+            <p>Reuse the current recipient details and set when the backend should generate it.</p>
+          </div>
+
+          <form className="form-grid" onSubmit={handleScheduleSubmit}>
+            <label>
+              Scheduled time
+              <input
+                type="datetime-local"
+                name="scheduledFor"
+                value={scheduleForm.scheduledFor}
+                onChange={updateScheduleField}
+              />
+            </label>
+
+            <button type="submit" disabled={scheduleLoading}>
+              {scheduleLoading ? "Scheduling..." : "Save scheduled wish"}
+            </button>
+          </form>
+
+          {scheduleSuccess ? <p className="success-text">{scheduleSuccess}</p> : null}
+          {scheduleError ? <p className="error-text">{scheduleError}</p> : null}
+        </section>
+
         <section className="panel history-panel">
           <div className="panel-heading">
             <h2>Recent wishes</h2>
-            <p>Saved locally for now so you can compare tone and avoid repetition later.</p>
+            <p>Saved messages so you can compare tone and keep the output fresh.</p>
           </div>
 
           <div className="history-list">
@@ -244,8 +342,36 @@ export default function App() {
             )}
           </div>
         </section>
+
+        <section className="panel history-panel">
+          <div className="panel-heading">
+            <h2>Scheduled wishes</h2>
+            <p>Track pending, processed, and failed jobs from the same dashboard.</p>
+          </div>
+
+          <div className="history-list">
+            {schedules.length ? (
+              schedules.map((item) => (
+                <article key={item.id} className="history-item schedule-item">
+                  <div className="history-topline">
+                    <strong>{item.name}</strong>
+                    <span>{formatScheduleTime(item.scheduledFor)}</span>
+                  </div>
+                  <p>
+                    {item.style} · {item.relationship} · {item.useLiveAi ? "Gemini" : "Local"}
+                  </p>
+                  <div className="schedule-meta-row">
+                    <span className={`status-pill status-${item.status}`}>{item.status}</span>
+                    {item.lastError ? <span className="schedule-error-note">{item.lastError}</span> : null}
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="empty-state">No scheduled wishes yet.</div>
+            )}
+          </div>
+        </section>
       </main>
     </div>
   );
 }
-
