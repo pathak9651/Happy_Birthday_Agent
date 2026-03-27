@@ -1,17 +1,17 @@
 import cron from "node-cron";
 import { createDeliveryHistory } from "../data/deliveryHistoryRepository.js";
-import { saveMessage } from "../data/messageRepository.js";
 import {
   markRecipientDeliveryActivity,
   markRecipientMessageActivity
 } from "../data/recipientRepository.js";
 import {
+  createNextYearSchedule,
   listDueSchedules,
   markScheduleFailed,
   markScheduleProcessed
 } from "../data/scheduleRepository.js";
 import { deliverScheduledWish } from "../delivery/deliverScheduledWish.js";
-import { generateMessage } from "../services/messageGenerator.js";
+import { generateMultilingualMessages } from "../services/messageGenerator.js";
 
 let isProcessing = false;
 
@@ -37,12 +37,7 @@ async function processDueSchedules() {
           useLiveAi: schedule.useLiveAi
         };
 
-        const generated = await generateMessage(scheduleInput);
-        const savedMessage = await saveMessage({
-          ...scheduleInput,
-          recipientId: schedule.recipientId ? schedule.recipientId.toString() : null,
-          ...generated
-        });
+        const generated = await generateMultilingualMessages(scheduleInput);
 
         await markRecipientMessageActivity(schedule.recipientId ? schedule.recipientId.toString() : null, new Date());
 
@@ -56,7 +51,7 @@ async function processDueSchedules() {
         if (schedule.deliveryChannel && schedule.deliveryChannel !== "in_app") {
           const sent = await deliverScheduledWish({
             schedule,
-            message: generated.message
+            message: generated.messages
           });
 
           deliveryResult = {
@@ -77,12 +72,17 @@ async function processDueSchedules() {
           destination: schedule.recipientEmail || "",
           provider: deliveryResult.provider,
           externalId: deliveryResult.externalId,
-          messageId: savedMessage.id,
+          messageId: null,
           scheduleId: schedule._id.toString(),
           errorMessage: ""
         });
 
-        await markScheduleProcessed(schedule._id, savedMessage.id, deliveryResult);
+        await markScheduleProcessed(schedule._id, null, deliveryResult);
+
+        if (schedule.repeatYearly) {
+          await createNextYearSchedule(schedule);
+        }
+
         console.log(`Processed scheduled wish for ${schedule.name}`);
       } catch (error) {
         await createDeliveryHistory({

@@ -25,6 +25,25 @@ function getTransporter() {
   return transporter;
 }
 
+function buildMultilingualEmailText(recipientName, message) {
+  if (typeof message === "string") {
+    return message;
+  }
+
+  return [
+    `Birthday wishes for ${recipientName}`,
+    "",
+    "English:",
+    message.english,
+    "",
+    "Hindi:",
+    message.hindi,
+    "",
+    "Hinglish:",
+    message.hinglish
+  ].join("\n");
+}
+
 export async function sendEmailDelivery({ recipientEmail, recipientName, message }) {
   if (!recipientEmail) {
     const error = new Error("recipientEmail is required for email delivery");
@@ -37,7 +56,7 @@ export async function sendEmailDelivery({ recipientEmail, recipientName, message
     from: config.smtpFrom,
     to: recipientEmail,
     subject: `Birthday wish for ${recipientName}`,
-    text: message
+    text: buildMultilingualEmailText(recipientName, message)
   });
 
   return {

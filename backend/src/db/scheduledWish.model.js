@@ -8,6 +8,11 @@ const scheduledWishSchema = new mongoose.Schema(
       default: null,
       index: true
     },
+    sourceScheduleId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ScheduledWish",
+      default: null
+    },
     name: {
       type: String,
       required: true,
@@ -57,6 +62,11 @@ const scheduledWishSchema = new mongoose.Schema(
       type: String,
       default: ""
     },
+    repeatYearly: {
+      type: Boolean,
+      default: true,
+      index: true
+    },
     deliveryStatus: {
       type: String,
       enum: ["pending", "sent", "failed", "skipped"],
@@ -98,6 +108,7 @@ const scheduledWishSchema = new mongoose.Schema(
         ret.createdAt = ret.createdAt.toISOString();
         ret.updatedAt = ret.updatedAt.toISOString();
         ret.recipientId = ret.recipientId ? ret.recipientId.toString() : null;
+        ret.sourceScheduleId = ret.sourceScheduleId ? ret.sourceScheduleId.toString() : null;
         ret.scheduledFor = ret.scheduledFor.toISOString();
         ret.processedAt = ret.processedAt ? ret.processedAt.toISOString() : null;
         ret.deliveredAt = ret.deliveredAt ? ret.deliveredAt.toISOString() : null;

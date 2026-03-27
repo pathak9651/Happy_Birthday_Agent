@@ -131,6 +131,72 @@ async function generateWithGemini(prompt) {
   }
 }
 
+function createFallbackMultilingualMessages(input) {
+  const english = createFallbackMessage(input);
+
+  return {
+    english,
+    hindi: `Janmadin mubarak ho ${input.name}. Aapki zindagi khushiyon, hasi aur yaadgaar palon se bhari rahe. Aap hamesha aise hi chamakte raho aur har naya saal aapke liye aur bhi khoobsurat ho.`,
+    hinglish: `Happy Birthday ${input.name}. Tumhari life hasi, masti aur amazing moments se bhari rahe. Har naya saal tumhare liye aur zyada success, peace aur unforgettable memories lekar aaye.`
+  };
+}
+
+async function generateMultilingualWithGemini(input) {
+  const client = getGeminiClient();
+  const prompt = buildPrompt(input);
+
+  if (!client) {
+    const error = new Error("GEMINI_API_KEY is missing in backend/.env");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  try {
+    const response = await client.models.generateContent({
+      model: config.geminiModel,
+      contents: `${prompt} Return valid JSON with exactly three string fields: english, hindi, hinglish. Each version should be unique, natural, and non-repetitive.` ,
+      config: {
+        systemInstruction:
+          "You write three distinct birthday wishes for the same person: one in English, one in Hindi written in Devanagari, and one in Hinglish written in Latin script. Return JSON only.",
+        temperature: 1
+      }
+    });
+
+    const text = response.text?.trim();
+    if (!text) {
+      const error = new Error("Gemini returned empty multilingual content");
+      error.statusCode = 502;
+      throw error;
+    }
+
+    const cleaned = text.replace(/^```json\s*/i, "").replace(/^```/, "").replace(/```$/, "").trim();
+    const parsed = JSON.parse(cleaned);
+
+    if (!parsed.english || !parsed.hindi || !parsed.hinglish) {
+      const error = new Error("Gemini multilingual response was incomplete");
+      error.statusCode = 502;
+      throw error;
+    }
+
+    return {
+      prompt,
+      provider: "Gemini",
+      modelUsed: config.geminiModel,
+      messages: {
+        english: String(parsed.english).trim(),
+        hindi: String(parsed.hindi).trim(),
+        hinglish: String(parsed.hinglish).trim()
+      }
+    };
+  } catch (error) {
+    const statusCode = error?.status || error?.statusCode || 502;
+    const message = error?.message || "Gemini multilingual request failed";
+    const wrappedError = new Error(message);
+    wrappedError.statusCode = statusCode;
+    throw wrappedError;
+  }
+}
+
 export async function generateMessage(input) {
   const prompt = buildPrompt(input);
 
@@ -143,5 +209,18 @@ export async function generateMessage(input) {
     provider: "Local template engine",
     modelUsed: "local-template-engine",
     message: createFallbackMessage(input)
+  };
+}
+
+export async function generateMultilingualMessages(input) {
+  if (input.useLiveAi) {
+    return generateMultilingualWithGemini(input);
+  }
+
+  return {
+    prompt: buildPrompt(input),
+    provider: "Local template engine",
+    modelUsed: "local-template-engine",
+    messages: createFallbackMultilingualMessages(input)
   };
 }

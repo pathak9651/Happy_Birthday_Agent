@@ -33,7 +33,8 @@ function normalizeScheduleDelivery(body) {
   return {
     deliveryChannel: String(body.deliveryChannel || "in_app").trim().toLowerCase(),
     recipientEmail: body.recipientEmail ? String(body.recipientEmail).trim() : "",
-    recipientPhone: ""
+    recipientPhone: "",
+    repeatYearly: body.repeatYearly !== false
   };
 }
 
@@ -110,19 +111,11 @@ async function logDeliveryHistory({
 export function createApp() {
   const app = express();
 
-  app.use(
-    cors({
-      origin: config.frontendOrigin
-    })
-  );
+  app.use(cors({ origin: config.frontendOrigin }));
   app.use(express.json());
 
   app.get("/api/health", (_req, res) => {
-    res.json({
-      ok: true,
-      service: "birthday-agent-backend",
-      database: getDatabaseStatus()
-    });
+    res.json({ ok: true, service: "birthday-agent-backend", database: getDatabaseStatus() });
   });
 
   app.get("/api/presets", (_req, res) => {
@@ -131,8 +124,7 @@ export function createApp() {
 
   app.get("/api/messages", async (_req, res, next) => {
     try {
-      const messages = await listMessages();
-      res.json(messages);
+      res.json(await listMessages());
     } catch (error) {
       next(error);
     }
@@ -140,8 +132,7 @@ export function createApp() {
 
   app.get("/api/schedules", async (_req, res, next) => {
     try {
-      const schedules = await listSchedules();
-      res.json(schedules);
+      res.json(await listSchedules());
     } catch (error) {
       next(error);
     }
@@ -149,8 +140,7 @@ export function createApp() {
 
   app.get("/api/recipients", async (_req, res, next) => {
     try {
-      const recipients = await listRecipientProfiles();
-      res.json(recipients);
+      res.json(await listRecipientProfiles());
     } catch (error) {
       next(error);
     }
@@ -158,8 +148,7 @@ export function createApp() {
 
   app.get("/api/delivery-history", async (_req, res, next) => {
     try {
-      const history = await listDeliveryHistory();
-      res.json(history);
+      res.json(await listDeliveryHistory());
     } catch (error) {
       next(error);
     }
@@ -168,19 +157,14 @@ export function createApp() {
   app.post("/api/generate", async (req, res, next) => {
     try {
       const body = req.body || {};
-
       if (!body.name || !body.relationship || !body.style) {
-        res.status(400).json({
-          error: "name, relationship, and style are required"
-        });
+        res.status(400).json({ error: "name, relationship, and style are required" });
         return;
       }
 
       const normalizedInput = normalizeWishInput(body);
       const { recipientId } = await getRecipientContext(normalizedInput);
-      const saved = await generateAndStoreMessage(normalizedInput, recipientId);
-
-      res.status(201).json(saved);
+      res.status(201).json(await generateAndStoreMessage(normalizedInput, recipientId));
     } catch (error) {
       next(error);
     }
@@ -189,11 +173,8 @@ export function createApp() {
   app.post("/api/send-test", async (req, res, next) => {
     try {
       const body = req.body || {};
-
       if (!body.name || !body.relationship || !body.style) {
-        res.status(400).json({
-          error: "name, relationship, and style are required"
-        });
+        res.status(400).json({ error: "name, relationship, and style are required" });
         return;
       }
 
@@ -204,10 +185,7 @@ export function createApp() {
       const { recipientId } = await getRecipientContext(normalizedInput, delivery);
       const saved = await generateAndStoreMessage(normalizedInput, recipientId);
       const deliveryResult = await deliverScheduledWish({
-        schedule: {
-          ...normalizedInput,
-          ...delivery
-        },
+        schedule: { ...normalizedInput, ...delivery },
         message: saved.message
       });
 
@@ -239,20 +217,14 @@ export function createApp() {
   app.post("/api/schedules", async (req, res, next) => {
     try {
       const body = req.body || {};
-
       if (!body.name || !body.relationship || !body.style || !body.scheduledFor) {
-        res.status(400).json({
-          error: "name, relationship, style, and scheduledFor are required"
-        });
+        res.status(400).json({ error: "name, relationship, style, and scheduledFor are required" });
         return;
       }
 
       const scheduledDate = new Date(body.scheduledFor);
-
       if (Number.isNaN(scheduledDate.getTime())) {
-        res.status(400).json({
-          error: "scheduledFor must be a valid ISO date"
-        });
+        res.status(400).json({ error: "scheduledFor must be a valid ISO date" });
         return;
       }
 
@@ -276,9 +248,7 @@ export function createApp() {
 
   app.use((error, _req, res, _next) => {
     console.error(error);
-    res.status(error.statusCode || 500).json({
-      error: error.message || "Internal server error"
-    });
+    res.status(error.statusCode || 500).json({ error: error.message || "Internal server error" });
   });
 
   return app;
