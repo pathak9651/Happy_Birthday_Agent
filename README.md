@@ -8,6 +8,7 @@ An MVP birthday-message generator built from your product idea:
 - MongoDB-backed persistence for generated wishes
 - Real Gemini integration when `useLiveAi` is enabled
 - Local template engine fallback when live AI is disabled
+- Automatic schedule processing with `node-cron`
 
 ## What is included
 
@@ -24,14 +25,16 @@ An MVP birthday-message generator built from your product idea:
 
 - `POST /api/generate` to generate and save a birthday message
 - `GET /api/messages` to fetch recent messages
-- `GET /api/presets` to load prompt modes for the UI
+- `POST /api/schedules` to create a scheduled birthday job
+- `GET /api/schedules` to fetch scheduled birthday jobs
 - MongoDB persistence with Mongoose
 - Gemini API integration through the official Google GenAI SDK
+- Cron-based schedule processing every minute
 
 ## Project structure
 
 ```text
-backend/   Express API
+backend/   Express API + MongoDB + scheduler
 frontend/  React + Vite dashboard
 ```
 
@@ -88,7 +91,7 @@ The backend expects MongoDB before it starts.
 
 ## Gemini setup
 
-The app now uses the official Google GenAI SDK in [`backend/src/services/messageGenerator.js`](/d:/Happy_Birthday_Agent/backend/src/services/messageGenerator.js).
+The app uses the official Google GenAI SDK in [`backend/src/services/messageGenerator.js`](/d:/Happy_Birthday_Agent/backend/src/services/messageGenerator.js).
 
 Behavior:
 
@@ -96,17 +99,33 @@ Behavior:
 - If `useLiveAi` is on, the app sends the built prompt to Gemini.
 - If `GEMINI_API_KEY` is missing, the API returns a clear error instead of silently failing.
 
+## Scheduling setup
+
+The scheduler starts automatically with the backend and checks for due jobs every minute.
+
+Schedule payload example:
+
+```json
+{
+  "name": "Rahul",
+  "relationship": "best friend",
+  "style": "funny",
+  "promptType": "universal",
+  "interests": ["cricket", "memes"],
+  "age": "25",
+  "useLiveAi": true,
+  "scheduledFor": "2026-03-28T00:00:00.000Z"
+}
+```
+
+When a schedule is due, the backend generates the message and stores it in the messages collection, then marks the schedule as `processed`. Failed runs are marked as `failed` with the error saved.
+
 ## Next upgrades
 
-### Smarter persistence
-
-The app already uses MongoDB through [`backend/src/db/message.model.js`](/d:/Happy_Birthday_Agent/backend/src/db/message.model.js) and [`backend/src/data/messageRepository.js`](/d:/Happy_Birthday_Agent/backend/src/data/messageRepository.js). You can extend it next with recipient profiles, schedules, and delivery logs.
-
-### Scheduling and delivery
+### Delivery
 
 Add:
 
-- `node-cron` for midnight scheduling
 - Twilio for SMS or WhatsApp delivery
 - NodeMailer for email sending
 - ElevenLabs for voice narration
