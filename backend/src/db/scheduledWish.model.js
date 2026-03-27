@@ -2,6 +2,12 @@ import mongoose from "mongoose";
 
 const scheduledWishSchema = new mongoose.Schema(
   {
+    recipientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "RecipientProfile",
+      default: null,
+      index: true
+    },
     name: {
       type: String,
       required: true,
@@ -91,6 +97,7 @@ const scheduledWishSchema = new mongoose.Schema(
         ret.id = ret._id.toString();
         ret.createdAt = ret.createdAt.toISOString();
         ret.updatedAt = ret.updatedAt.toISOString();
+        ret.recipientId = ret.recipientId ? ret.recipientId.toString() : null;
         ret.scheduledFor = ret.scheduledFor.toISOString();
         ret.processedAt = ret.processedAt ? ret.processedAt.toISOString() : null;
         ret.deliveredAt = ret.deliveredAt ? ret.deliveredAt.toISOString() : null;

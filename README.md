@@ -10,6 +10,7 @@ An MVP birthday-message generator built from your product idea:
 - Local template engine fallback when live AI is disabled
 - Automatic schedule processing with `node-cron`
 - Delivery through in-app storage or email
+- Saved recipient profiles and delivery history
 
 ## What is included
 
@@ -23,6 +24,8 @@ An MVP birthday-message generator built from your product idea:
 - `Use Gemini live generation` toggle for real model output
 - Schedule form with in-app and email delivery options
 - `Send test now` button for immediate email verification
+- Saved recipient profiles panel
+- Delivery history panel
 
 ### Backend
 
@@ -31,31 +34,19 @@ An MVP birthday-message generator built from your product idea:
 - `GET /api/messages` to fetch recent messages
 - `POST /api/schedules` to create a scheduled birthday job
 - `GET /api/schedules` to fetch scheduled birthday jobs
+- `GET /api/recipients` to fetch saved recipient profiles
+- `GET /api/delivery-history` to fetch delivery activity
 - MongoDB persistence with Mongoose
 - Gemini API integration through the official Google GenAI SDK
 - Cron-based schedule processing every minute
 - Email delivery with Nodemailer
 
-## Environment
+## Product memory
 
-Core variables:
+The app now remembers recipients and delivery activity:
 
-- `MONGODB_URI=mongodb://127.0.0.1:27017/happy-birthday-agent`
-- `GEMINI_API_KEY=your_key_here`
-- `GEMINI_MODEL=gemini-2.5-flash`
-
-Email variables:
-
-- `SMTP_HOST=`
-- `SMTP_PORT=587`
-- `SMTP_SECURE=false`
-- `SMTP_USER=`
-- `SMTP_PASS=`
-- `SMTP_FROM=`
-
-## Scheduling and delivery
-
-Delivery channels:
-
-- `in_app` keeps the message stored only in MongoDB
-- `email` sends via Nodemailer
+- recipients are upserted by name + relationship
+- favorite style and prompt type are saved automatically
+- default email and delivery preference are remembered
+- last message and last delivery timestamps are tracked
+- every test send and scheduled send is logged in delivery history

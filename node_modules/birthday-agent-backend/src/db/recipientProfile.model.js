@@ -1,13 +1,7 @@
 import mongoose from "mongoose";
 
-const messageSchema = new mongoose.Schema(
+const recipientProfileSchema = new mongoose.Schema(
   {
-    recipientId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "RecipientProfile",
-      default: null,
-      index: true
-    },
     name: {
       type: String,
       required: true,
@@ -18,46 +12,41 @@ const messageSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
-    style: {
+    favoriteStyle: {
       type: String,
-      required: true,
+      default: "funny",
       trim: true,
       lowercase: true
     },
-    promptType: {
+    favoritePromptType: {
       type: String,
-      required: true,
+      default: "universal",
       trim: true,
       lowercase: true
-    },
-    age: {
-      type: String,
-      default: ""
     },
     interests: {
       type: [String],
       default: []
     },
-    useLiveAi: {
-      type: Boolean,
-      default: false
-    },
-    provider: {
-      type: String,
-      required: true
-    },
-    modelUsed: {
+    age: {
       type: String,
       default: ""
     },
-    prompt: {
+    defaultDeliveryChannel: {
       type: String,
-      required: true
+      enum: ["in_app", "email"],
+      default: "in_app"
     },
-    message: {
+    email: {
       type: String,
-      required: true
-    }
+      default: ""
+    },
+    notes: {
+      type: String,
+      default: ""
+    },
+    lastMessageAt: Date,
+    lastDeliveryAt: Date
   },
   {
     timestamps: true,
@@ -67,7 +56,8 @@ const messageSchema = new mongoose.Schema(
         ret.id = ret._id.toString();
         ret.createdAt = ret.createdAt.toISOString();
         ret.updatedAt = ret.updatedAt.toISOString();
-        ret.recipientId = ret.recipientId ? ret.recipientId.toString() : null;
+        ret.lastMessageAt = ret.lastMessageAt ? ret.lastMessageAt.toISOString() : null;
+        ret.lastDeliveryAt = ret.lastDeliveryAt ? ret.lastDeliveryAt.toISOString() : null;
         delete ret._id;
         return ret;
       }
@@ -75,4 +65,6 @@ const messageSchema = new mongoose.Schema(
   }
 );
 
-export const Message = mongoose.model("Message", messageSchema);
+recipientProfileSchema.index({ name: 1, relationship: 1 }, { unique: true });
+
+export const RecipientProfile = mongoose.model("RecipientProfile", recipientProfileSchema);

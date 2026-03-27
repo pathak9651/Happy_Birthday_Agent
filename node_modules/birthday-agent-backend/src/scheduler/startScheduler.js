@@ -1,5 +1,10 @@
 import cron from "node-cron";
+import { createDeliveryHistory } from "../data/deliveryHistoryRepository.js";
 import { saveMessage } from "../data/messageRepository.js";
+import {
+  markRecipientDeliveryActivity,
+  markRecipientMessageActivity
+} from "../data/recipientRepository.js";
 import {
   listDueSchedules,
   markScheduleFailed,
@@ -35,13 +40,17 @@ async function processDueSchedules() {
         const generated = await generateMessage(scheduleInput);
         const savedMessage = await saveMessage({
           ...scheduleInput,
+          recipientId: schedule.recipientId ? schedule.recipientId.toString() : null,
           ...generated
         });
+
+        await markRecipientMessageActivity(schedule.recipientId ? schedule.recipientId.toString() : null, new Date());
 
         let deliveryResult = {
           deliveryStatus: "skipped",
           externalId: "",
-          deliveredAt: null
+          deliveredAt: null,
+          provider: "in_app"
         };
 
         if (schedule.deliveryChannel && schedule.deliveryChannel !== "in_app") {
@@ -53,13 +62,41 @@ async function processDueSchedules() {
           deliveryResult = {
             deliveryStatus: "sent",
             externalId: sent.externalId || "",
-            deliveredAt: new Date()
+            deliveredAt: new Date(),
+            provider: "nodemailer"
           };
+
+          await markRecipientDeliveryActivity(schedule.recipientId ? schedule.recipientId.toString() : null, new Date());
         }
+
+        await createDeliveryHistory({
+          recipientId: schedule.recipientId || null,
+          recipientName: schedule.name,
+          deliveryChannel: schedule.deliveryChannel,
+          status: deliveryResult.deliveryStatus,
+          destination: schedule.recipientEmail || "",
+          provider: deliveryResult.provider,
+          externalId: deliveryResult.externalId,
+          messageId: savedMessage.id,
+          scheduleId: schedule._id.toString(),
+          errorMessage: ""
+        });
 
         await markScheduleProcessed(schedule._id, savedMessage.id, deliveryResult);
         console.log(`Processed scheduled wish for ${schedule.name}`);
       } catch (error) {
+        await createDeliveryHistory({
+          recipientId: schedule.recipientId || null,
+          recipientName: schedule.name,
+          deliveryChannel: schedule.deliveryChannel,
+          status: "failed",
+          destination: schedule.recipientEmail || "",
+          provider: schedule.deliveryChannel === "email" ? "nodemailer" : "in_app",
+          externalId: "",
+          messageId: null,
+          scheduleId: schedule._id.toString(),
+          errorMessage: error.message || "Schedule processing failed"
+        });
         await markScheduleFailed(schedule._id, error.message || "Schedule processing failed");
         console.error(`Failed scheduled wish for ${schedule.name}`, error);
       }

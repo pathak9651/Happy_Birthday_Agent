@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const messageSchema = new mongoose.Schema(
+const deliveryHistorySchema = new mongoose.Schema(
   {
     recipientId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -8,55 +8,46 @@ const messageSchema = new mongoose.Schema(
       default: null,
       index: true
     },
-    name: {
+    recipientName: {
       type: String,
       required: true,
       trim: true
     },
-    relationship: {
+    deliveryChannel: {
       type: String,
-      required: true,
-      trim: true
+      enum: ["in_app", "email"],
+      required: true
     },
-    style: {
+    status: {
       type: String,
-      required: true,
-      trim: true,
-      lowercase: true
+      enum: ["sent", "failed", "skipped"],
+      required: true
     },
-    promptType: {
-      type: String,
-      required: true,
-      trim: true,
-      lowercase: true
+    messageId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Message",
+      default: null
     },
-    age: {
+    scheduleId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ScheduledWish",
+      default: null
+    },
+    destination: {
       type: String,
       default: ""
-    },
-    interests: {
-      type: [String],
-      default: []
-    },
-    useLiveAi: {
-      type: Boolean,
-      default: false
     },
     provider: {
       type: String,
-      required: true
+      default: ""
     },
-    modelUsed: {
+    externalId: {
       type: String,
       default: ""
     },
-    prompt: {
+    errorMessage: {
       type: String,
-      required: true
-    },
-    message: {
-      type: String,
-      required: true
+      default: ""
     }
   },
   {
@@ -68,6 +59,8 @@ const messageSchema = new mongoose.Schema(
         ret.createdAt = ret.createdAt.toISOString();
         ret.updatedAt = ret.updatedAt.toISOString();
         ret.recipientId = ret.recipientId ? ret.recipientId.toString() : null;
+        ret.messageId = ret.messageId ? ret.messageId.toString() : null;
+        ret.scheduleId = ret.scheduleId ? ret.scheduleId.toString() : null;
         delete ret._id;
         return ret;
       }
@@ -75,4 +68,4 @@ const messageSchema = new mongoose.Schema(
   }
 );
 
-export const Message = mongoose.model("Message", messageSchema);
+export const DeliveryHistory = mongoose.model("DeliveryHistory", deliveryHistorySchema);

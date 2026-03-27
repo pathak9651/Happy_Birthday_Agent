@@ -69,6 +69,8 @@ export default function App() {
   const [presets, setPresets] = useState([]);
   const [history, setHistory] = useState([]);
   const [schedules, setSchedules] = useState([]);
+  const [recipients, setRecipients] = useState([]);
+  const [deliveryHistory, setDeliveryHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
@@ -81,21 +83,27 @@ export default function App() {
   useEffect(() => {
     async function loadInitialData() {
       try {
-        const [presetResponse, historyResponse, schedulesResponse] = await Promise.all([
+        const [presetResponse, historyResponse, schedulesResponse, recipientsResponse, deliveryHistoryResponse] = await Promise.all([
           fetch(`${apiBaseUrl}/presets`),
           fetch(`${apiBaseUrl}/messages`),
-          fetch(`${apiBaseUrl}/schedules`)
+          fetch(`${apiBaseUrl}/schedules`),
+          fetch(`${apiBaseUrl}/recipients`),
+          fetch(`${apiBaseUrl}/delivery-history`)
         ]);
 
-        const [presetData, historyData, schedulesData] = await Promise.all([
+        const [presetData, historyData, schedulesData, recipientsData, deliveryHistoryData] = await Promise.all([
           readJson(presetResponse),
           readJson(historyResponse),
-          readJson(schedulesResponse)
+          readJson(schedulesResponse),
+          readJson(recipientsResponse),
+          readJson(deliveryHistoryResponse)
         ]);
 
         setPresets(presetData);
         setHistory(historyData);
         setSchedules(schedulesData);
+        setRecipients(recipientsData);
+        setDeliveryHistory(deliveryHistoryData);
       } catch (requestError) {
         setError(requestError.message);
       }
@@ -137,6 +145,27 @@ export default function App() {
     };
   }
 
+  async function refreshSidePanels() {
+    const [messagesResponse, schedulesResponse, recipientsResponse, deliveryHistoryResponse] = await Promise.all([
+      fetch(`${apiBaseUrl}/messages`),
+      fetch(`${apiBaseUrl}/schedules`),
+      fetch(`${apiBaseUrl}/recipients`),
+      fetch(`${apiBaseUrl}/delivery-history`)
+    ]);
+
+    const [messagesData, schedulesData, recipientsData, deliveryHistoryData] = await Promise.all([
+      readJson(messagesResponse),
+      readJson(schedulesResponse),
+      readJson(recipientsResponse),
+      readJson(deliveryHistoryResponse)
+    ]);
+
+    setHistory(messagesData);
+    setSchedules(schedulesData);
+    setRecipients(recipientsData);
+    setDeliveryHistory(deliveryHistoryData);
+  }
+
   async function handleWishSubmit(event) {
     event.preventDefault();
     setLoading(true);
@@ -153,7 +182,7 @@ export default function App() {
 
       const data = await readJson(response);
       setLatestMessage(data);
-      setHistory((current) => [data, ...current].slice(0, 5));
+      await refreshSidePanels();
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -181,12 +210,12 @@ export default function App() {
 
       const data = await readJson(response);
       setLatestMessage(data.message);
-      setHistory((current) => [data.message, ...current].slice(0, 5));
       setTestStatus(
         data.delivery.status === "sent"
           ? `Test sent via ${formatDeliveryLabel(data.delivery.channel)}.`
           : "Test completed with in-app storage only."
       );
+      await refreshSidePanels();
     } catch (requestError) {
       setScheduleError(requestError.message);
     } finally {
@@ -215,11 +244,11 @@ export default function App() {
       });
 
       const data = await readJson(response);
-      setSchedules((current) => [...current, data].sort((a, b) => a.scheduledFor.localeCompare(b.scheduledFor)));
       setScheduleSuccess(
         `Scheduled ${data.name}'s birthday wish for ${formatScheduleTime(data.scheduledFor)} via ${formatDeliveryLabel(data.deliveryChannel)}.`
       );
       setScheduleForm(initialScheduleForm);
+      await refreshSidePanels();
     } catch (requestError) {
       setScheduleError(requestError.message);
     } finally {
@@ -255,12 +284,7 @@ export default function App() {
           <form className="form-grid" onSubmit={handleWishSubmit}>
             <label>
               Name
-              <input
-                name="name"
-                value={wishForm.name}
-                onChange={updateWishField}
-                placeholder="Rahul"
-              />
+              <input name="name" value={wishForm.name} onChange={updateWishField} placeholder="Rahul" />
             </label>
 
             <label>
@@ -416,6 +440,35 @@ export default function App() {
 
         <section className="panel history-panel">
           <div className="panel-heading">
+            <h2>Saved recipients</h2>
+            <p>Your recipient profiles now remember preferences and recent activity.</p>
+          </div>
+
+          <div className="history-list">
+            {recipients.length ? (
+              recipients.map((item) => (
+                <article key={item.id} className="history-item">
+                  <div className="history-topline">
+                    <strong>{item.name}</strong>
+                    <span>{item.relationship}</span>
+                  </div>
+                  <p>
+                    Favorite style: {item.favoriteStyle} · Delivery: {formatDeliveryLabel(item.defaultDeliveryChannel)}
+                  </p>
+                  <p>
+                    {item.email ? `Email: ${item.email}` : "No default email saved"}
+                    {item.lastDeliveryAt ? ` · Last delivery: ${formatScheduleTime(item.lastDeliveryAt)}` : ""}
+                  </p>
+                </article>
+              ))
+            ) : (
+              <div className="empty-state">No recipient profiles yet.</div>
+            )}
+          </div>
+        </section>
+
+        <section className="panel history-panel">
+          <div className="panel-heading">
             <h2>Recent wishes</h2>
             <p>Saved messages so you can compare tone and keep the output fresh.</p>
           </div>
@@ -469,6 +522,36 @@ export default function App() {
               ))
             ) : (
               <div className="empty-state">No scheduled wishes yet.</div>
+            )}
+          </div>
+        </section>
+
+        <section className="panel history-panel">
+          <div className="panel-heading">
+            <h2>Delivery history</h2>
+            <p>Every test send and scheduled delivery is logged here.</p>
+          </div>
+
+          <div className="history-list">
+            {deliveryHistory.length ? (
+              deliveryHistory.map((item) => (
+                <article key={item.id} className="history-item">
+                  <div className="history-topline">
+                    <strong>{item.recipientName}</strong>
+                    <span>{formatScheduleTime(item.createdAt)}</span>
+                  </div>
+                  <p>
+                    {formatDeliveryLabel(item.deliveryChannel)} · {item.provider || "in_app"}
+                    {item.destination ? ` · ${item.destination}` : ""}
+                  </p>
+                  <div className="schedule-meta-row">
+                    <span className={`status-pill delivery-${item.status}`}>{item.status}</span>
+                    {item.errorMessage ? <span className="schedule-error-note">{item.errorMessage}</span> : null}
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="empty-state">No delivery history yet.</div>
             )}
           </div>
         </section>

@@ -1,12 +1,19 @@
 import cors from "cors";
 import express from "express";
 import { config } from "./config.js";
+import { createDeliveryHistory, listDeliveryHistory } from "./data/deliveryHistoryRepository.js";
 import { listMessages, saveMessage } from "./data/messageRepository.js";
+import {
+  listRecipientProfiles,
+  markRecipientDeliveryActivity,
+  markRecipientMessageActivity,
+  upsertRecipientProfile
+} from "./data/recipientRepository.js";
 import { createSchedule, listSchedules } from "./data/scheduleRepository.js";
 import { deliverScheduledWish } from "./delivery/deliverScheduledWish.js";
 import { getDatabaseStatus } from "./db/connectToDatabase.js";
-import { promptPresets } from "./services/promptBuilder.js";
 import { generateMessage } from "./services/messageGenerator.js";
+import { promptPresets } from "./services/promptBuilder.js";
 
 function normalizeWishInput(body) {
   return {
@@ -44,14 +51,60 @@ function validateScheduleDelivery(delivery) {
   }
 }
 
-async function generateAndStoreMessage(input) {
+async function getRecipientContext(input, delivery = {}) {
+  const recipient = await upsertRecipientProfile({
+    ...input,
+    ...delivery
+  });
+
+  return {
+    recipient,
+    recipientId: recipient._id.toString()
+  };
+}
+
+async function generateAndStoreMessage(input, recipientId = null) {
   const generated = await generateMessage(input);
   const saved = await saveMessage({
     ...input,
+    recipientId,
     ...generated
   });
 
+  await markRecipientMessageActivity(recipientId, new Date());
   return saved;
+}
+
+async function logDeliveryHistory({
+  recipientId,
+  recipientName,
+  deliveryChannel,
+  status,
+  destination = "",
+  provider = "",
+  externalId = "",
+  messageId = null,
+  scheduleId = null,
+  errorMessage = ""
+}) {
+  const entry = await createDeliveryHistory({
+    recipientId,
+    recipientName,
+    deliveryChannel,
+    status,
+    destination,
+    provider,
+    externalId,
+    messageId,
+    scheduleId,
+    errorMessage
+  });
+
+  if (status === "sent") {
+    await markRecipientDeliveryActivity(recipientId, new Date());
+  }
+
+  return entry;
 }
 
 export function createApp() {
@@ -94,6 +147,24 @@ export function createApp() {
     }
   });
 
+  app.get("/api/recipients", async (_req, res, next) => {
+    try {
+      const recipients = await listRecipientProfiles();
+      res.json(recipients);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/delivery-history", async (_req, res, next) => {
+    try {
+      const history = await listDeliveryHistory();
+      res.json(history);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.post("/api/generate", async (req, res, next) => {
     try {
       const body = req.body || {};
@@ -106,7 +177,8 @@ export function createApp() {
       }
 
       const normalizedInput = normalizeWishInput(body);
-      const saved = await generateAndStoreMessage(normalizedInput);
+      const { recipientId } = await getRecipientContext(normalizedInput);
+      const saved = await generateAndStoreMessage(normalizedInput, recipientId);
 
       res.status(201).json(saved);
     } catch (error) {
@@ -129,7 +201,8 @@ export function createApp() {
       const delivery = normalizeScheduleDelivery(body);
       validateScheduleDelivery(delivery);
 
-      const saved = await generateAndStoreMessage(normalizedInput);
+      const { recipientId } = await getRecipientContext(normalizedInput, delivery);
+      const saved = await generateAndStoreMessage(normalizedInput, recipientId);
       const deliveryResult = await deliverScheduledWish({
         schedule: {
           ...normalizedInput,
@@ -138,12 +211,24 @@ export function createApp() {
         message: saved.message
       });
 
+      const deliveryStatus = delivery.deliveryChannel === "in_app" ? "skipped" : "sent";
+      await logDeliveryHistory({
+        recipientId,
+        recipientName: normalizedInput.name,
+        deliveryChannel: delivery.deliveryChannel,
+        status: deliveryStatus,
+        destination: delivery.recipientEmail || "",
+        provider: delivery.deliveryChannel === "email" ? "nodemailer" : "in_app",
+        externalId: deliveryResult.externalId || "",
+        messageId: saved.id
+      });
+
       res.status(201).json({
         message: saved,
         delivery: {
           channel: deliveryResult.channel,
           externalId: deliveryResult.externalId || "",
-          status: delivery.deliveryChannel === "in_app" ? "skipped" : "sent"
+          status: deliveryStatus
         }
       });
     } catch (error) {
@@ -174,10 +259,12 @@ export function createApp() {
       const normalizedInput = normalizeWishInput(body);
       const delivery = normalizeScheduleDelivery(body);
       validateScheduleDelivery(delivery);
+      const { recipientId } = await getRecipientContext(normalizedInput, delivery);
 
       const savedSchedule = await createSchedule({
         ...normalizedInput,
         ...delivery,
+        recipientId,
         scheduledFor: scheduledDate
       });
 
