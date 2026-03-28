@@ -183,31 +183,45 @@ export function createApp() {
 
       const { recipientId } = await getRecipientContext(normalizedInput, delivery);
       const generated = await generateWishResponse(normalizedInput, recipientId);
-      const deliveryResult = await deliverScheduledWish({
-        schedule: { ...normalizedInput, ...delivery },
-        message: generated.message
-      });
 
-      const deliveryStatus = delivery.deliveryChannel === "in_app" ? "skipped" : "sent";
-      await logDeliveryHistory({
-        recipientId,
-        recipientName: normalizedInput.name,
-        deliveryChannel: delivery.deliveryChannel,
-        status: deliveryStatus,
-        destination: delivery.recipientEmail || "",
-        provider: delivery.deliveryChannel === "email" ? "nodemailer" : "in_app",
-        externalId: deliveryResult.externalId || "",
-        messageId: null
-      });
+      try {
+        const deliveryResult = await deliverScheduledWish({
+          schedule: { ...normalizedInput, ...delivery },
+          message: generated.message
+        });
 
-      res.status(201).json({
-        message: generated,
-        delivery: {
-          channel: deliveryResult.channel,
+        const deliveryStatus = delivery.deliveryChannel === "in_app" ? "skipped" : "sent";
+        await logDeliveryHistory({
+          recipientId,
+          recipientName: normalizedInput.name,
+          deliveryChannel: delivery.deliveryChannel,
+          status: deliveryStatus,
+          destination: delivery.recipientEmail || "",
+          provider: delivery.deliveryChannel === "email" ? "nodemailer" : "in_app",
           externalId: deliveryResult.externalId || "",
-          status: deliveryStatus
-        }
-      });
+          messageId: null
+        });
+
+        res.status(201).json({
+          message: generated,
+          delivery: {
+            channel: deliveryResult.channel,
+            externalId: deliveryResult.externalId || "",
+            status: deliveryStatus
+          }
+        });
+      } catch (deliveryError) {
+        await logDeliveryHistory({
+          recipientId,
+          recipientName: normalizedInput.name,
+          deliveryChannel: delivery.deliveryChannel,
+          status: "failed",
+          destination: delivery.recipientEmail || "",
+          provider: delivery.deliveryChannel === "email" ? "nodemailer" : "in_app",
+          errorMessage: deliveryError.message || "Delivery failed"
+        });
+        throw deliveryError;
+      }
     } catch (error) {
       next(error);
     }

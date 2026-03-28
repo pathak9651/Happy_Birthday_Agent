@@ -44,6 +44,30 @@ function buildMultilingualEmailText(recipientName, message) {
   ].join("\n");
 }
 
+function normalizeEmailError(error) {
+  if (error.code === "EAUTH") {
+    const authError = new Error("SMTP authentication failed. Check SMTP_USER and SMTP_PASS.");
+    authError.statusCode = 502;
+    return authError;
+  }
+
+  if (error.code === "ESOCKET" || error.code === "ECONNECTION" || error.code === "ETIMEDOUT") {
+    const connectionError = new Error("SMTP connection failed. Check SMTP_HOST, SMTP_PORT, and SMTP_SECURE.");
+    connectionError.statusCode = 502;
+    return connectionError;
+  }
+
+  if (error.code === "EENVELOPE") {
+    const recipientError = new Error("SMTP rejected the recipient email address.");
+    recipientError.statusCode = 400;
+    return recipientError;
+  }
+
+  const fallbackError = new Error(error.message || "Email delivery failed");
+  fallbackError.statusCode = error.statusCode || 502;
+  return fallbackError;
+}
+
 export async function sendEmailDelivery({ recipientEmail, recipientName, message }) {
   if (!recipientEmail) {
     const error = new Error("recipientEmail is required for email delivery");
@@ -52,12 +76,18 @@ export async function sendEmailDelivery({ recipientEmail, recipientName, message
   }
 
   const transport = getTransporter();
-  const info = await transport.sendMail({
-    from: config.smtpFrom,
-    to: recipientEmail,
-    subject: `Birthday wish for ${recipientName}`,
-    text: buildMultilingualEmailText(recipientName, message)
-  });
+  let info;
+
+  try {
+    info = await transport.sendMail({
+      from: config.smtpFrom,
+      to: recipientEmail,
+      subject: `Birthday wish for ${recipientName}`,
+      text: buildMultilingualEmailText(recipientName, message)
+    });
+  } catch (error) {
+    throw normalizeEmailError(error);
+  }
 
   return {
     channel: "email",
