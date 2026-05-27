@@ -20,3 +20,91 @@ Emitted 'error' event on Server instance at:
 }
 
 Node.js v22.17.1
+node:internal/modules/esm/resolve:204
+  const resolvedOption = FSLegacyMainResolve(pkgPath, packageConfig.main, baseStringified);
+                         ^
+
+Error: Cannot find package 'D:\Happy_Birthday_Agent\node_modules\mongoose\index.js' imported from D:\Happy_Birthday_Agent\backend\src\db\connectToDatabase.js
+    at legacyMainResolve (node:internal/modules/esm/resolve:204:26)
+    at packageResolve (node:internal/modules/esm/resolve:778:12)
+    at moduleResolve (node:internal/modules/esm/resolve:854:18)
+    at defaultResolve (node:internal/modules/esm/resolve:984:11)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:780:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:704:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:687:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:305:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:175:49) {
+  code: 'ERR_MODULE_NOT_FOUND'
+}
+
+Node.js v22.17.1
+node:internal/modules/cjs/loader:1401
+  const err = new Error(message);
+              ^
+
+Error: Cannot find module '../../utils'
+Require stack:
+- D:\Happy_Birthday_Agent\node_modules\mongodb\lib\cmap\wire_protocol\responses.js
+- D:\Happy_Birthday_Agent\node_modules\mongodb\lib\operations\delete.js
+- D:\Happy_Birthday_Agent\node_modules\mongodb\lib\bulk\common.js
+- D:\Happy_Birthday_Agent\node_modules\mongoose\lib\drivers\node-mongodb-native\bulkWriteResult.js
+- D:\Happy_Birthday_Agent\node_modules\mongoose\lib\drivers\node-mongodb-native\index.js
+- D:\Happy_Birthday_Agent\node_modules\mongoose\lib\index.js
+- D:\Happy_Birthday_Agent\node_modules\mongoose\index.js
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1401:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1057:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1062:22)
+    at Function._load (node:internal/modules/cjs/loader:1211:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at Module.require (node:internal/modules/cjs/loader:1487:12)
+    at require (node:internal/modules/helpers:135:16)
+    at Object.<anonymous> (D:\Happy_Birthday_Agent\node_modules\mongodb\lib\cmap\wire_protocol\responses.js:7:17)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'D:\\Happy_Birthday_Agent\\node_modules\\mongodb\\lib\\cmap\\wire_protocol\\responses.js',
+    'D:\\Happy_Birthday_Agent\\node_modules\\mongodb\\lib\\operations\\delete.js',
+    'D:\\Happy_Birthday_Agent\\node_modules\\mongodb\\lib\\bulk\\common.js',
+    'D:\\Happy_Birthday_Agent\\node_modules\\mongoose\\lib\\drivers\\node-mongodb-native\\bulkWriteResult.js',
+    'D:\\Happy_Birthday_Agent\\node_modules\\mongoose\\lib\\drivers\\node-mongodb-native\\index.js',
+    'D:\\Happy_Birthday_Agent\\node_modules\\mongoose\\lib\\index.js',
+    'D:\\Happy_Birthday_Agent\\node_modules\\mongoose\\index.js'
+  ]
+}
+
+Node.js v22.17.1
+node:internal/modules/cjs/loader:1401
+  const err = new Error(message);
+              ^
+
+Error: Cannot find module '../helpers/symbols'
+Require stack:
+- D:\Happy_Birthday_Agent\node_modules\mongoose\lib\types\objectid.js
+- D:\Happy_Birthday_Agent\node_modules\mongoose\lib\drivers\node-mongodb-native\collection.js
+- D:\Happy_Birthday_Agent\node_modules\mongoose\lib\drivers\node-mongodb-native\index.js
+- D:\Happy_Birthday_Agent\node_modules\mongoose\lib\index.js
+- D:\Happy_Birthday_Agent\node_modules\mongoose\index.js
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1401:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1057:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1062:22)
+    at Function._load (node:internal/modules/cjs/loader:1211:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at Module.require (node:internal/modules/cjs/loader:1487:12)
+    at require (node:internal/modules/helpers:135:16)
+    at Object.<anonymous> (D:\Happy_Birthday_Agent\node_modules\mongoose\lib\types\objectid.js:14:24)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'D:\\Happy_Birthday_Agent\\node_modules\\mongoose\\lib\\types\\objectid.js',
+    'D:\\Happy_Birthday_Agent\\node_modules\\mongoose\\lib\\drivers\\node-mongodb-native\\collection.js',
+    'D:\\Happy_Birthday_Agent\\node_modules\\mongoose\\lib\\drivers\\node-mongodb-native\\index.js',
+    'D:\\Happy_Birthday_Agent\\node_modules\\mongoose\\lib\\index.js',
+    'D:\\Happy_Birthday_Agent\\node_modules\\mongoose\\index.js'
+  ]
+}
+
+Node.js v22.17.1
+Port 4000 is already in use. Stop the existing process or set a different PORT.
+Port 4001 is already in use. Stop the existing process or set a different PORT.

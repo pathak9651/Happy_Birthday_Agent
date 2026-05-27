@@ -168,6 +168,11 @@ export default function App() {
     };
   }
 
+  const activeRecipient = recipients.find((recipient) => recipient.id === selectedRecipientId);
+  const liveModeLabel = form.useLiveAi ? "Gemini Live" : "Local Template";
+  const deliveryModeLabel = form.deliveryChannel === "email" ? "Email delivery" : "In-app delivery";
+  const canSchedule = Boolean(form.scheduledFor);
+
   async function handleGenerate() {
     setGenerateLoading(true);
     setFormError("");
@@ -239,22 +244,41 @@ export default function App() {
     <div className="page-shell">
       <section className="hero-band">
         <div className="hero-copy">
-          <p className="eyebrow">Birthday Wishing Agent</p>
-          <h1>Your agent is welcoming you and sending wishes to everyone.</h1>
-          <p className="hero-text hero-subtext">Create, test, schedule, and remember birthday wishes from one place.</p>
+          <div className="brand-line">
+            <p className="eyebrow">Birthday Wishing Agent</p>
+            <span className="live-chip">Connected studio</span>
+          </div>
+          <h1>Design birthday wishes that feel personal, premium, and effortless.</h1>
+          <p className="hero-text hero-subtext">Compose thoughtful messages, test delivery instantly, and keep every birthday memory organized in one polished workspace.</p>
+          <div className="hero-chip-row">
+            <span className="hero-chip">{liveModeLabel}</span>
+            <span className="hero-chip">{deliveryModeLabel}</span>
+            <span className="hero-chip">{schedules.length} scheduled</span>
+          </div>
         </div>
-        <div className="hero-stats">
-          <article><span>Recipients</span><strong>{recipients.length}</strong></article>
-          <article><span>Scheduled</span><strong>{schedules.length}</strong></article>
-          <article><span>Deliveries</span><strong>{deliveryHistory.length}</strong></article>
+        <div className="hero-side">
+          <div className="hero-stats">
+            <article><span>Recipients</span><strong>{recipients.length}</strong><p>Saved profiles ready to reuse.</p></article>
+            <article><span>Scheduled</span><strong>{schedules.length}</strong><p>Upcoming birthday wishes waiting.</p></article>
+            <article><span>Deliveries</span><strong>{deliveryHistory.length}</strong><p>Track every message that was sent.</p></article>
+          </div>
+          <div className="hero-focus-card">
+            <p className="eyebrow">Session spotlight</p>
+            <h3>{activeRecipient ? activeRecipient.name : "No recipient selected"}</h3>
+            <p>{activeRecipient ? `${activeRecipient.relationship || "Recipient"} · ${activeRecipient.favoriteStyle || form.style} tone` : "Select a saved profile to autofill the form and move faster."}</p>
+            <div className="hero-focus-meta">
+              <span>{activeRecipient?.email || "Email not saved"}</span>
+              <span>{activeRecipient?.favoritePromptType || form.promptType}</span>
+            </div>
+          </div>
         </div>
       </section>
 
       <main className="dashboard-grid">
         <section className="composer-panel wide-panel">
           <div className="composer-topline">
-            <div><p className="eyebrow">Unified Studio</p><h2>Compose Once</h2></div>
-            <div className="mode-chip"><span>{form.useLiveAi ? "Gemini Live" : "Local Template"}</span></div>
+            <div><p className="eyebrow">Unified Studio</p><h2>Compose once, deliver beautifully.</h2></div>
+            <div className="mode-chip"><span>{liveModeLabel}</span></div>
           </div>
 
           <div className="command-form">
@@ -292,7 +316,7 @@ export default function App() {
               <div className="action-bar">
                 <button type="button" disabled={generateLoading} onClick={handleGenerate}>{generateLoading ? "Generating..." : "Generate Now"}</button>
                 <button type="button" className="secondary-button" disabled={testLoading} onClick={handleSendTestNow}>{testLoading ? "Sending..." : "Send Test"}</button>
-                <button type="button" className="ghost-button" disabled={scheduleLoading} onClick={handleSchedule}>{scheduleLoading ? "Scheduling..." : "Schedule Wish"}</button>
+                <button type="button" className="ghost-button" disabled={scheduleLoading || !canSchedule} onClick={handleSchedule}>{scheduleLoading ? "Scheduling..." : "Schedule Wish"}</button>
               </div>
             </div>
           </div>
@@ -302,7 +326,7 @@ export default function App() {
         </section>
 
         <section className="panel wide-panel">
-          <div className="panel-header"><div><p className="eyebrow">Profiles</p><h2>Saved Recipients</h2></div><p className="panel-hint">Tap any card to autofill the form above.</p></div>
+          <div className="panel-header"><div><p className="eyebrow">Profiles</p><h2>Saved recipients</h2></div><p className="panel-hint">Tap any card to autofill the form above.</p></div>
           <div className="card-grid three-up">
             {recipients.length ? recipients.map((item) => (
               <button key={item.id} type="button" className={`info-card recipient-card selectable-card ${selectedRecipientId === item.id ? "selected-card" : ""}`} onClick={() => autofillRecipient(item)}>
@@ -315,8 +339,29 @@ export default function App() {
           </div>
         </section>
 
+        <section className="panel wide-panel quick-glance-panel">
+          <div className="panel-header"><div><p className="eyebrow">Quick glance</p><h2>At a glance</h2></div><p className="panel-hint">These cards help you see the workspace state instantly.</p></div>
+          <div className="glance-grid">
+            <article className="glance-card glow-coral">
+              <span>Current mode</span>
+              <strong>{liveModeLabel}</strong>
+              <p>{form.useLiveAi ? "Live AI is enabled for richer, contextual wishes." : "Local templates are active for fast deterministic output."}</p>
+            </article>
+            <article className="glance-card glow-teal">
+              <span>Delivery</span>
+              <strong>{deliveryModeLabel}</strong>
+              <p>{form.deliveryChannel === "email" ? "Email delivery is ready when a recipient address is provided." : "Messages stay in app unless you switch to email."}</p>
+            </article>
+            <article className="glance-card glow-gold">
+              <span>Selected profile</span>
+              <strong>{activeRecipient ? activeRecipient.name : "None"}</strong>
+              <p>{activeRecipient ? "A saved recipient is loaded and can be edited instantly." : "Choose a recipient card to prefill the form."}</p>
+            </article>
+          </div>
+        </section>
+
         <section className="panel wide-panel">
-          <div className="panel-header"><div><p className="eyebrow">Scheduler</p><h2>Scheduled Wishes</h2></div></div>
+          <div className="panel-header"><div><p className="eyebrow">Scheduler</p><h2>Scheduled wishes</h2></div></div>
           <div className="card-grid two-up">
             {schedules.length ? schedules.map((item) => (
               <article key={item.id} className="info-card schedule-card">
@@ -331,7 +376,7 @@ export default function App() {
         </section>
 
         <section className="panel wide-panel">
-          <div className="panel-header"><div><p className="eyebrow">Delivery Log</p><h2>Delivery History</h2></div></div>
+          <div className="panel-header"><div><p className="eyebrow">Delivery Log</p><h2>Delivery history</h2></div></div>
           <div className="card-grid two-up">
             {deliveryHistory.length ? deliveryHistory.map((item) => (
               <article key={item.id} className="info-card delivery-card">
@@ -345,7 +390,7 @@ export default function App() {
         </section>
 
         <section className="panel wide-panel">
-          <div className="panel-header"><div><p className="eyebrow">Output Feed</p><h2>Recent Wishes</h2></div><p className="panel-hint">Visible on this dashboard only for the current session.</p></div>
+          <div className="panel-header"><div><p className="eyebrow">Output Feed</p><h2>Recent wishes</h2></div><p className="panel-hint">Visible on this dashboard only for the current session.</p></div>
           <div className="history-list">
             {history.length ? history.map((item) => (
               <article key={item.id} className="history-item">
