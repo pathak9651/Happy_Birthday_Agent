@@ -41,6 +41,20 @@ body {
     linear-gradient(145deg, var(--bg-0) 0%, var(--bg-1) 40%, var(--bg-2) 100%);
 }
 
+body,
+#root {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
 body::before {
   content: "";
   position: fixed;
@@ -200,6 +214,7 @@ label,
   max-width: 44rem;
   line-height: 1.8;
   font-size: 0.98rem;
+  overflow-wrap: anywhere;
 }
 
 .hero-side {
@@ -253,6 +268,14 @@ label,
     linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
     radial-gradient(circle at 20% 20%, rgba(255, 122, 89, 0.14), transparent 24%),
     rgba(12, 19, 28, 0.8);
+}
+
+.history-item p,
+.panel-header p,
+.section-heading p,
+.assistant-note span,
+.muted-line {
+  overflow-wrap: anywhere;
 }
 
 .hero-focus-card h3 {
@@ -683,6 +706,23 @@ button:disabled {
   border: 1px dashed rgba(255, 255, 255, 0.14);
 }
 
+@media (hover: none) and (pointer: coarse) {
+  .hero-band:hover,
+  .composer-panel:hover,
+  .panel:hover,
+  .hero-focus-card:hover,
+  .glance-card:hover,
+  .info-card:hover,
+  .history-item:hover,
+  .empty-state:hover,
+  .form-section:hover,
+  .selectable-card:hover,
+  button:hover {
+    transform: none;
+    box-shadow: inherit;
+  }
+}
+
 @media (max-width: 1120px) {
   .hero-band {
     grid-template-columns: 1fr;
@@ -733,11 +773,103 @@ button:disabled {
 @media (max-width: 640px) {
   .page-shell {
     width: min(100% - 20px, 1360px);
-    padding-top: 14px;
+    padding: 14px 0 44px;
+  }
+
+  .hero-band,
+  .composer-panel,
+  .panel {
+    padding: 18px;
+    border-radius: 22px;
+  }
+
+  .hero-band {
+    gap: 16px;
+  }
+
+  .brand-line {
+    gap: 8px;
+    margin-bottom: 12px;
   }
 
   .hero-copy h1 {
-    font-size: clamp(2.3rem, 12vw, 3.4rem);
+    max-width: 100%;
+    font-size: clamp(2.05rem, 12vw, 3rem);
+    line-height: 1;
+  }
+
+  .hero-text {
+    margin-top: 14px;
+    font-size: 0.94rem;
+    line-height: 1.7;
+  }
+
+  .hero-chip-row {
+    margin-top: 14px;
+  }
+
+  .hero-stats,
+  .hero-side,
+  .glance-grid,
+  .two-up,
+  .three-up {
+    gap: 12px;
+  }
+
+  .hero-stats article,
+  .hero-focus-card,
+  .glance-card,
+  .info-card,
+  .history-item,
+  .empty-state {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .hero-stats strong {
+    font-size: 1.65rem;
+  }
+
+  .hero-stats p,
+  .hero-focus-card p,
+  .glance-card p,
+  .info-card p,
+  .history-item p {
+    font-size: 0.92rem;
+    line-height: 1.6;
+  }
+
+  .hero-focus-card h3 {
+    font-size: 1.35rem;
+  }
+
+  .composer-topline h2,
+  .panel-header h2 {
+    font-size: 1.45rem;
+  }
+
+  .form-section {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .field-grid,
+  .command-form {
+    gap: 12px;
+  }
+
+  input,
+  select {
+    padding: 13px 14px;
+    border-radius: 14px;
+  }
+
+  .assistant-note {
+    max-width: 100%;
+  }
+
+  .assistant-note strong {
+    font-size: 0.95rem;
   }
 
   .hero-chip-row,
@@ -748,14 +880,25 @@ button:disabled {
     gap: 10px;
   }
 
-  .form-section,
-  .composer-panel,
-  .panel,
-  .info-card,
-  .history-item,
-  .glance-card,
-  .hero-focus-card {
-    border-radius: 20px;
+  .hero-chip,
+  .live-chip,
+  .mode-chip,
+  .mini-meta span,
+  .status-pill,
+  .message-badge {
+    width: fit-content;
+    max-width: 100%;
+    padding: 7px 10px;
+  }
+
+  .history-topline,
+  .composer-footer,
+  .panel-header {
+    gap: 10px;
+  }
+
+  .composer-footer {
+    align-items: stretch;
   }
 
   .action-bar button,
@@ -763,5 +906,187 @@ button:disabled {
   .ghost-button,
   button {
     width: 100%;
+    padding: 14px 16px;
+  }
+
+  .two-col,
+  .three-col,
+  .two-up,
+  .three-up,
+  .glance-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .page-shell {
+    width: min(100% - 14px, 1360px);
+  }
+
+  .hero-band,
+  .composer-panel,
+  .panel {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .hero-band,
+  .composer-panel,
+  .panel,
+  .hero-focus-card,
+  .glance-card,
+  .info-card,
+  .history-item,
+  .empty-state,
+  .form-section {
+    box-shadow: var(--shadow-soft);
+  }
+
+  .brand-line,
+  .hero-chip-row,
+  .hero-focus-meta,
+  .mini-meta,
+  .schedule-meta-row,
+  .action-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .brand-line {
+    margin-bottom: 10px;
+  }
+
+  .hero-chip,
+  .live-chip,
+  .mode-chip,
+  .mini-meta span,
+  .status-pill,
+  .message-badge,
+  .hero-focus-meta span {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .hero-copy h1 {
+    font-size: clamp(1.9rem, 13vw, 2.6rem);
+  }
+
+  .eyebrow {
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+  }
+
+  .hero-stats strong {
+    font-size: 1.45rem;
+  }
+
+  .action-bar {
+    gap: 8px;
+  }
+
+  .hero-focus-meta,
+  .hero-chip-row,
+  .mini-meta,
+  .schedule-meta-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .hero-focus-meta span,
+  .hero-chip,
+  .live-chip,
+  .mini-meta span,
+  .status-pill,
+  .message-badge {
+    width: 100%;
+  }
+
+  .history-topline,
+  .composer-topline {
+    gap: 8px;
+  }
+
+  .panel-header p,
+  .section-heading p,
+  .panel-hint,
+  .hero-text {
+    font-size: 0.9rem;
+  }
+
+  .composer-topline h2,
+  .panel-header h2 {
+    font-size: 1.28rem;
+  }
+
+  .hero-stats article,
+  .hero-focus-card,
+  .glance-card,
+  .info-card,
+  .history-item,
+  .empty-state,
+  .form-section {
+    padding: 14px;
+  }
+
+  .hero-focus-card h3 {
+    font-size: 1.2rem;
+  }
+
+  .hero-stats strong {
+    font-size: 1.3rem;
+  }
+
+  .hero-chip-row,
+  .hero-focus-meta,
+  .mini-meta,
+  .schedule-meta-row {
+    gap: 8px;
+  }
+
+  input,
+  select {
+    padding: 12px 13px;
+    border-radius: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .page-shell {
+    width: min(100% - 10px, 1360px);
+  }
+
+  .hero-copy h1 {
+    font-size: clamp(1.7rem, 14vw, 2.25rem);
+  }
+
+  .hero-text,
+  .panel-header p,
+  .section-heading p,
+  .panel-hint,
+  .assistant-note span,
+  .muted-line {
+    font-size: 0.85rem;
+  }
+
+  .hero-stats article,
+  .hero-focus-card,
+  .glance-card,
+  .info-card,
+  .history-item,
+  .empty-state,
+  .form-section,
+  .composer-panel,
+  .panel,
+  .hero-band {
+    border-radius: 16px;
+  }
+
+  .action-bar button,
+  .secondary-button,
+  .ghost-button,
+  button {
+    padding: 13px 14px;
+    font-size: 0.95rem;
   }
 }
