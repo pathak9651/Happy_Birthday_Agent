@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 export const config = {
-  port: Number(process.env.PORT || 4000),
+  port: Number(process.env.PORT || 4001),
   frontendOrigin: process.env.FRONTEND_ORIGIN || "http://localhost:5173",
   mongoUri: process.env.MONGODB_URI || "",
   geminiApiKey: process.env.GEMINI_API_KEY || "",

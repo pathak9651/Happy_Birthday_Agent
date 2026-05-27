@@ -108,3 +108,12 @@ Require stack:
 Node.js v22.17.1
 Port 4000 is already in use. Stop the existing process or set a different PORT.
 Port 4001 is already in use. Stop the existing process or set a different PORT.
+Port 4001 is already in use. Stop the existing process or set a different PORT.
+Port 4001 is already in use. Stop the existing process or set a different PORT.
+Port 4001 is already in use. Stop the existing process or set a different PORT.
+(node:7916) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:7916) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+(node:7916) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+(node:7916) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+(node:7916) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.

@@ -20,6 +20,22 @@ function getTransporter() {
         pass: config.smtpPass
       }
     });
+     // DEBUGGING START
+  console.log("SMTP CONFIG:", {
+    host: config.smtpHost,
+    port: config.smtpPort,
+    secure: config.smtpSecure,
+    user: config.smtpUser
+  });
+
+  transporter.verify((error, success) => {
+    if (error) {
+      console.log("SMTP ERROR:", error);
+    } else {
+      console.log("SMTP READY");
+    }
+  });
+  // DEBUGGING END
   }
 
   return transporter;

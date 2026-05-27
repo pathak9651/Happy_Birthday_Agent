@@ -89,3 +89,28 @@ export function buildPrompt(input) {
     "End with a strong closing line."
   ].join(" ");
 }
+
+export function buildShortWishPrompt({ name, relationship, tone, detail, language = "english", maxWords = 20 } = {}) {
+  const person = name || "the person";
+  const rel = relationship || "friend";
+  const t = tone || "warm";
+  const lang = (language || "english").toString().toLowerCase();
+  const detailLine = detail ? `Use one specific detail: ${detail}.` : "Do not invent facts; use provided detail only.";
+
+  let languageInstruction = "Write the wish in English.";
+  if (lang === "hindi") {
+    languageInstruction = "Write the wish in Hindi (Devanagari script).";
+  } else if (lang === "hinglish") {
+    languageInstruction = "Write the wish in Hinglish — Hindi phrasing using Latin script (Romanized Hindi).";
+  }
+
+  return [
+    "You are a helpful assistant.",
+    "Write a single short birthday wish (1–2 sentences, max " + maxWords + " words).",
+    `Tailor it to: name: ${person}, relationship: ${rel}, tone: ${t}.`,
+    languageInstruction,
+    detailLine,
+    "Avoid clichés and long lists.",
+    "Return only the wish text with no surrounding commentary."
+  ].join(" ");
+}
