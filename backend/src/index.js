@@ -9,8 +9,19 @@ async function startServer() {
   await connectToDatabase();
   startScheduler();
 
-  app.listen(config.port, () => {
+  const server = app.listen(config.port, () => {
     console.log(`Birthday agent backend running on http://localhost:${config.port}`);
+  });
+
+  server.on("error", (error) => {
+    if (error?.code === "EADDRINUSE") {
+      console.error(
+        `Port ${config.port} is already in use. Stop the existing process or set a different PORT.`
+      );
+      process.exit(1);
+    }
+
+    throw error;
   });
 }
 
